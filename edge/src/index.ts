@@ -43,10 +43,11 @@ async function proxyTmdb(request: Request, env: Env, tmdbPath: string): Promise<
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(`https://api.themoviedb.org/3/${tmdbPath}`);
   incoming.searchParams.forEach((value, key) => upstreamUrl.searchParams.set(key, value));
+  // TMDB v3 auth: the API Key as a query param (as opposed to the v4 Read Access
+  // Token, which would go as a Bearer header instead).
+  upstreamUrl.searchParams.set("api_key", env.TMDB_API_KEY);
 
-  const upstream = await fetch(upstreamUrl, {
-    headers: { authorization: `Bearer ${env.TMDB_API_KEY}` },
-  });
+  const upstream = await fetch(upstreamUrl);
   return withCors(upstream);
 }
 
