@@ -168,3 +168,8 @@ reelscout/
 - **Backend for v1:** thin-relay Cloudflare Worker only. Containers (full Kotlin/Ktor backend) is a confirmed v2 item, not part of the initial build.
 - **Default region:** US, for both provider lookups and which free/ad-supported services are considered. A region picker is Phase 5 polish.
 - **Reelgood data source:** left out. Sticking with TMDB + Watchmode + Archive.org as the fully self-serve, reproducible data layer.
+- **Live relay:** `reelscout.bitterinfantproductions.com/api/*` is deployed and confirmed
+  working (TMDB search verified end-to-end through the Worker). All three secrets
+  (Anthropic, TMDB, Watchmode) are set. DNS currently has a placeholder `A` record
+  (192.0.2.1, proxied) for the subdomain — that gets cleanly replaced once Cloudflare
+  Pages is set up with this subdomain as its custom domain (Phase 3).
