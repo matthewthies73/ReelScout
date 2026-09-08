@@ -16,9 +16,9 @@ import kotlinx.serialization.json.JsonNamingStrategy
  * See ROADMAP.md > "Backend on Cloudflare" for why the relay is deliberately dumb.
  */
 object EdgeApiConfig {
-    // TODO: replace with the deployed Worker URL once Phase 2 is live
-    // (e.g. https://reelscout-relay.<your-subdomain>.workers.dev).
-    var baseUrl: String = "http://localhost:8787"
+    // Points at the Worker route (reelscout.bitterinfantproductions.com/api/* - see
+    // edge/wrangler.toml). Override to http://localhost:8787 for local `wrangler dev`.
+    var baseUrl: String = "https://reelscout.bitterinfantproductions.com"
 }
 
 /** Platform HTTP engine — see the androidMain/iosMain/desktopMain/wasmJsMain actuals. */

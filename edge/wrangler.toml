@@ -2,6 +2,15 @@ name = "reelscout-relay"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
+# Routed under the reelscout subdomain instead of a workers.dev URL - only the /api/*
+# path hits this Worker; everything else on the subdomain is served by the Pages
+# project (the Compose Multiplatform Wasm/Web build). Requires the
+# bitterinfantproductions.com zone to be Active in Cloudflare before `wrangler deploy`
+# can create this route.
+routes = [
+  { pattern = "reelscout.bitterinfantproductions.com/api/*", zone_name = "bitterinfantproductions.com" }
+]
+
 # Secrets (never put real values here - set them with `wrangler secret put <NAME>`):
 #   ANTHROPIC_API_KEY
 #   TMDB_API_KEY

@@ -59,22 +59,31 @@ produces for the version pinned in `gradle/libs.versions.toml`.
 
 ## Backend / deployment
 
-Nothing is deployed by default. To stand up the relay yourself:
+Deployed under `reelscout.bitterinfantproductions.com`: the Worker (`edge/`) owns the
+`/api/*` route on that subdomain (see `edge/wrangler.toml`), and a Cloudflare Pages
+project serves everything else — the Compose Multiplatform Wasm/Web build — with that
+subdomain as its custom domain. Both live under the same `bitterinfantproductions.com`
+Cloudflare zone, which has to be Active (nameservers pointed at Cloudflare) before either
+can be wired up.
+
+To stand up the relay yourself:
 
 ```bash
 cd edge
 npm install
-wrangler secret put ANTHROPIC_API_KEY
-wrangler secret put TMDB_API_KEY
-wrangler secret put WATCHMODE_API_KEY
-npm run deploy
+CLOUDFLARE_API_TOKEN=... wrangler secret put ANTHROPIC_API_KEY
+CLOUDFLARE_API_TOKEN=... wrangler secret put TMDB_API_KEY
+CLOUDFLARE_API_TOKEN=... wrangler secret put WATCHMODE_API_KEY
+CLOUDFLARE_API_TOKEN=... npm run deploy
 ```
 
-Then point the client at it by changing `EdgeApiConfig.baseUrl` in
-`shared/src/commonMain/kotlin/com/reelscout/data/EdgeApiClient.kt`. Once that's confirmed
-working, the two GitHub Actions workflows (`deploy-worker.yml`, `deploy-web.yml`) take
-over — they need `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
-See ROADMAP.md for the full CI/CD writeup.
+`EdgeApiConfig.baseUrl` in `shared/src/commonMain/kotlin/com/reelscout/data/
+EdgeApiClient.kt` already points at `https://reelscout.bitterinfantproductions.com` —
+override it to `http://localhost:8787` for local `wrangler dev` testing.
+
+Once confirmed working, the two GitHub Actions workflows (`deploy-worker.yml`,
+`deploy-web.yml`) take over — they need `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` as repo secrets. See ROADMAP.md for the full CI/CD writeup.
 
 ## Data sources
 
