@@ -1,0 +1,23 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths: ['composeApp/**', 'shared/**']
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: chmod +x gradlew
+      - run: ./gradlew :composeApp:wasmJsBrowserDistribution
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy composeApp/build/dist/wasmJs/productionExecutable --project-name=reelscout-web

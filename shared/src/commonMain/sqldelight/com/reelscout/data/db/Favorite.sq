@@ -1,0 +1,18 @@
+CREATE TABLE favoriteTitle (
+    id INTEGER NOT NULL PRIMARY KEY,
+    tmdbId INTEGER NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    mediaType TEXT NOT NULL,
+    posterPath TEXT,
+    addedAtEpochMillis INTEGER NOT NULL
+);
+
+selectAll:
+SELECT * FROM favoriteTitle ORDER BY addedAtEpochMillis DESC;
+
+insertFavorite:
+INSERT INTO favoriteTitle(tmdbId, title, mediaType, posterPath, addedAtEpochMillis)
+VALUES (?, ?, ?, ?, ?);
+
+deleteByTmdbId:
+DELETE FROM favoriteTitle WHERE tmdbId = ?;
