@@ -14,17 +14,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Phase 0/1 placeholder UI: a single search box wired to nothing yet. This becomes the
- * chat screen in Phase 4 once AgentLoop (see :shared > agent) is wired in - see
- * ROADMAP.md for the phased plan.
+ * The chat screen - talks to ChatViewModel, which wraps AgentLoop (see :shared > agent).
+ * Same UI code, same agent, on all four targets.
  */
 @Composable
 fun App() {
@@ -32,34 +30,34 @@ fun App() {
         Scaffold(
             topBar = { TopAppBar(title = { Text("ReelScout") }) }
         ) { padding ->
+            val viewModel: ChatViewModel = koinViewModel()
+            val state by viewModel.uiState.collectAsState()
+
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                var query by remember { mutableStateOf("") }
-                var messages by remember { mutableStateOf(listOf<String>()) }
-
                 Text("Find something free to watch")
 
                 TextField(
-                    value = query,
-                    onValueChange = { query = it },
+                    value = state.input,
+                    onValueChange = viewModel::onInputChange,
+                    enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(onClick = {
-                    // TODO(Phase 4): call AgentLoop.run(query) via a ViewModel/Koin-injected
-                    // instance once the Cloudflare Worker relay (edge/) is deployed.
-                    if (query.isNotBlank()) {
-                        messages = messages + "You asked: $query"
-                        query = ""
-                    }
-                }) {
-                    Text("Ask ReelScout")
+                Button(onClick = viewModel::send, enabled = !state.isLoading) {
+                    Text(if (state.isLoading) "Asking..." else "Ask ReelScout")
+                }
+
+                state.statusText?.let { status ->
+                    Text(status, style = MaterialTheme.typography.bodySmall)
                 }
 
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(messages) { message -> Text(message) }
+                    items(state.messages) { message ->
+                        Text((if (message.fromUser) "You: " else "ReelScout: ") + message.text)
+                    }
                 }
             }
         }
