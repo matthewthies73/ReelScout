@@ -80,6 +80,15 @@ export default {
     const url = new URL(request.url);
 
     try {
+      // Cheap way to confirm a deploy actually landed: GET /api/health
+      if (url.pathname === "/api/health") {
+        return withCors(
+          new Response(JSON.stringify({ status: "ok", service: "reelscout-relay" }), {
+            headers: { "content-type": "application/json" },
+          })
+        );
+      }
+
       if (url.pathname === "/api/anthropic/messages" && request.method === "POST") {
         return await proxyAnthropic(request, env);
       }
