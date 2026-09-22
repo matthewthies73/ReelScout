@@ -23,3 +23,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: edge
           command: deploy
+      # Smoke test: the new version answers, and the lockdown is still in place.
+      - name: Check the live relay
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://reelscout.bitterinfantproductions.com/api/health | grep -q '"status":"ok"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://reelscout.bitterinfantproductions.com/api/tmdb/account)" = 404

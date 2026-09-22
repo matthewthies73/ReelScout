@@ -24,10 +24,13 @@ iosApp/       Xcode project that hosts the composeApp iOS framework
 
 ## Status
 
-Phase 4 in progress: all four Gradle targets build, the chat UI drives the real agent
-tool-use loop in `shared` (TMDB/Watchmode/Archive.org repositories, not stubs), and the
-`edge` Worker relay is deployed. The Cloudflare Pages web deploy isn't set up yet — see
-ROADMAP.md's phased plan for what's next.
+**Live (web): https://reelscout.bitterinfantproductions.com**
+
+Phases 0-4 done: all four Gradle targets build, the chat UI drives the real agent
+tool-use loop in `shared` (TMDB/Watchmode/Archive.org, not stubs), and pushes to `main`
+deploy both the `edge` Worker relay and the Wasm web app, each followed by a smoke test.
+Desktop and web are tested end to end; Android and iOS build but haven't been run on a
+device yet. See ROADMAP.md's phased plan for what's next (Phase 5 onward).
 
 ## Building
 

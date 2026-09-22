@@ -21,3 +21,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy composeApp/build/dist/wasmJs/productionExecutable --project-name=reelscout-web
+      # Smoke test: the custom domain serves the app, not a Pages error page.
+      - name: Check the live site
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://reelscout.bitterinfantproductions.com/ | grep -q '<title>ReelScout</title>'

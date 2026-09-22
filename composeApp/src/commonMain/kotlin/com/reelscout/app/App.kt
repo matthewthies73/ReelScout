@@ -114,6 +114,14 @@ internal fun AssistantMessage(markdown: String) {
         // full height on the first frame and MessageList can scroll to it.
         markdownState = rememberMarkdownState(markdown, immediate = true),
         typography = markdownTypography(
+            // The library's heading defaults are display-sized; in a chat answer a heading
+            // should read as a section label, not dwarf the text around it.
+            h1 = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            h2 = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            h3 = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            h4 = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            h5 = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            h6 = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             textLink = TextLinkStyles(
                 SpanStyle(
                     color = MaterialTheme.colorScheme.primary,
