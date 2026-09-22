@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Install the lockfile's Wrangler 4 so wrangler-action uses it instead of its own
+      # default (3.90), which silently drops the [[ratelimits]] bindings in wrangler.toml.
+      - run: npm ci
+        working-directory: edge
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
