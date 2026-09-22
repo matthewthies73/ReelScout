@@ -77,6 +77,8 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.ktor.client.cio)
             implementation(libs.kotlinx.coroutines.core)
+            // Provides Dispatchers.Main on desktop - viewModelScope launches on it.
+            implementation(libs.kotlinx.coroutines.swing)
         }
 
         wasmJsMain.dependencies {
