@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.rememberMarkdownState
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -73,17 +76,31 @@ fun App() {
                     Text(status, style = MaterialTheme.typography.bodySmall)
                 }
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.messages) { message ->
-                        if (message.fromUser) {
-                            Text(message.text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        } else if (message.isError) {
-                            Text(message.text, color = MaterialTheme.colorScheme.error)
-                        } else {
-                            AssistantMessage(message.text)
-                        }
-                    }
-                }
+                MessageList(state.messages)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MessageList(messages: List<ChatMessage>) {
+    val listState = rememberLazyListState()
+
+    // New messages are added at the bottom, below a possibly long answer. Keep the latest
+    // question at the top of the list so it and the start of its answer are on screen.
+    LaunchedEffect(messages.size) {
+        val latestQuestion = messages.indexOfLast { it.fromUser }
+        if (latestQuestion >= 0) listState.animateScrollToItem(latestQuestion)
+    }
+
+    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        items(messages) { message ->
+            if (message.fromUser) {
+                Text(message.text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            } else if (message.isError) {
+                Text(message.text, color = MaterialTheme.colorScheme.error)
+            } else {
+                AssistantMessage(message.text)
             }
         }
     }
@@ -93,7 +110,9 @@ fun App() {
 @Composable
 internal fun AssistantMessage(markdown: String) {
     Markdown(
-        content = markdown,
+        // Parse during composition rather than in the background, so the answer has its
+        // full height on the first frame and MessageList can scroll to it.
+        markdownState = rememberMarkdownState(markdown, immediate = true),
         typography = markdownTypography(
             textLink = TextLinkStyles(
                 SpanStyle(
