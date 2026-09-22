@@ -9,6 +9,7 @@ import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.platformHttpClient
 import org.koin.core.context.startKoin
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 
@@ -24,7 +25,9 @@ val appModule = module {
     single { AnthropicClient(get()) }
     single { ToolExecutor(get(), get(), get()) }
     single { AgentLoop(get(), get()) }
-    single { ChatViewModel(get()) }
+    // viewModel, not single: tied to the screen's lifecycle, so viewModelScope is cancelled
+    // when the screen goes away instead of living for the whole process.
+    viewModel { ChatViewModel(get()) }
 }
 
 /** Called once per process from each platform's entry point - see the *Main source sets. */

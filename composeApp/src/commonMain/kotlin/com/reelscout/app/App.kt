@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -35,12 +36,22 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun App() {
     MaterialTheme {
-        Scaffold(
-            topBar = { TopAppBar(title = { Text("ReelScout") }) }
-        ) { padding ->
-            val viewModel: ChatViewModel = koinViewModel()
-            val state by viewModel.uiState.collectAsState()
+        val viewModel: ChatViewModel = koinViewModel()
+        val state by viewModel.uiState.collectAsState()
 
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("ReelScout") },
+                    actions = {
+                        TextButton(
+                            onClick = viewModel::newChat,
+                            enabled = state.messages.isNotEmpty() && !state.isLoading
+                        ) { Text("New chat") }
+                    }
+                )
+            }
+        ) { padding ->
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -66,6 +77,8 @@ fun App() {
                     items(state.messages) { message ->
                         if (message.fromUser) {
                             Text(message.text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        } else if (message.isError) {
+                            Text(message.text, color = MaterialTheme.colorScheme.error)
                         } else {
                             AssistantMessage(message.text)
                         }

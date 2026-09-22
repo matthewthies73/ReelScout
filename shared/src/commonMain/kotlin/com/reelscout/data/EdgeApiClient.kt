@@ -1,6 +1,7 @@
 package com.reelscout.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
@@ -36,5 +37,11 @@ internal val commonJson = Json {
 
 internal fun io.ktor.client.HttpClientConfig<*>.installEdgeDefaults() {
     install(ContentNegotiation) { json(commonJson) }
+    // Engine defaults are 10-15s, but one Claude turn (thinking + a long answer) can take
+    // longer than that. The cap still bounds a hung connection.
+    install(HttpTimeout) {
+        requestTimeoutMillis = 120_000
+        socketTimeoutMillis = 120_000
+    }
     install(Logging) { level = LogLevel.INFO }
 }
