@@ -48,6 +48,16 @@ sealed class ContentBlock {
     @SerialName("text")
     data class Text(val text: String) : ContentBlock()
 
+    // Claude Sonnet 5 thinks adaptively by default. These have to be echoed back unchanged
+    // in the assistant turn during the tool-use loop, so they're modeled rather than dropped.
+    @Serializable
+    @SerialName("thinking")
+    data class Thinking(val thinking: String, val signature: String) : ContentBlock()
+
+    @Serializable
+    @SerialName("redacted_thinking")
+    data class RedactedThinking(val data: String) : ContentBlock()
+
     @Serializable
     @SerialName("tool_use")
     data class ToolUse(val id: String, val name: String, val input: JsonElement) : ContentBlock()
