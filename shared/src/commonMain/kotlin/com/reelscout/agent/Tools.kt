@@ -24,25 +24,35 @@ object Tools {
         }
     )
 
+    // Both availability tools take the same title-in-region input.
+    private val titleInRegionSchema = buildJsonObject {
+        put("type", "object")
+        putJsonObject("properties") {
+            putJsonObject("tmdbId") { put("type", "integer") }
+            putJsonObject("mediaType") {
+                put("type", "string")
+                putJsonArray("enum") { add("movie"); add("tv") }
+            }
+            putJsonObject("region") {
+                put("type", "string")
+                put("description", "ISO 3166-1 region code, e.g. US.")
+            }
+        }
+        putJsonArray("required") { add("tmdbId"); add("mediaType"); add("region") }
+    }
+
     val getWatchProviders = ToolDefinition(
         name = "get_watch_providers",
         description = "Look up where a specific title (by TMDB id) can be streamed in a given " +
-            "region, including free/ad-supported options.",
-        inputSchema = buildJsonObject {
-            put("type", "object")
-            putJsonObject("properties") {
-                putJsonObject("tmdbId") { put("type", "integer") }
-                putJsonObject("mediaType") {
-                    put("type", "string")
-                    putJsonArray("enum") { add("movie"); add("tv") }
-                }
-                putJsonObject("region") {
-                    put("type", "string")
-                    put("description", "ISO 3166-1 region code, e.g. US.")
-                }
-            }
-            putJsonArray("required") { add("tmdbId"); add("mediaType"); add("region") }
-        }
+            "region, from TMDB/JustWatch data: free, ad-supported and subscription options.",
+        inputSchema = titleInRegionSchema
+    )
+
+    val getWatchmodeSources = ToolDefinition(
+        name = "get_watchmode_sources",
+        description = "Cross-check a title's (by TMDB id) streaming availability in a region using " +
+            "Watchmode, which also returns a direct link for each free source.",
+        inputSchema = titleInRegionSchema
     )
 
     val searchPublicDomain = ToolDefinition(
@@ -58,5 +68,5 @@ object Tools {
         }
     )
 
-    val all = listOf(searchTitles, getWatchProviders, searchPublicDomain)
+    val all = listOf(searchTitles, getWatchProviders, getWatchmodeSources, searchPublicDomain)
 }

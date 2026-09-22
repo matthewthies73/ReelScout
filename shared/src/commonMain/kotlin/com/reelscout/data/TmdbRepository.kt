@@ -1,7 +1,9 @@
 package com.reelscout.data
 
 import com.reelscout.domain.MediaType
+import com.reelscout.domain.RegionAvailability
 import com.reelscout.domain.Title
+import com.reelscout.domain.WatchOption
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -25,9 +27,13 @@ class TmdbRepository(private val client: HttpClient) {
     }
 
     /** TMDB's watch/providers endpoint — backed by JustWatch licensing data. */
-    suspend fun getWatchProviders(tmdbId: Int, mediaType: MediaType, region: String): TmdbWatchProvidersResponse {
+    suspend fun getWatchProviders(tmdbId: Int, mediaType: MediaType, region: String): RegionAvailability {
         val path = if (mediaType == MediaType.MOVIE) "movie" else "tv"
-        return client.get("${EdgeApiConfig.baseUrl}/api/tmdb/$path/$tmdbId/watch/providers").body()
+        val response: TmdbWatchProvidersResponse =
+            client.get("${EdgeApiConfig.baseUrl}/api/tmdb/$path/$tmdbId/watch/providers").body()
+
+        // TMDB returns every country at once (~150 KB); only the requested one goes to Claude.
+        return response.results[region.uppercase()].toAvailability(region.uppercase())
     }
 }
 
@@ -67,6 +73,18 @@ data class TmdbRegionProviders(
     val free: List<TmdbProvider>? = null,
     val ads: List<TmdbProvider>? = null
 )
+
+internal fun TmdbRegionProviders?.toAvailability(region: String): RegionAvailability {
+    val free = this?.free.orEmpty().map { WatchOption(it.providerName, adSupported = false) }
+    val ads = this?.ads.orEmpty().map { WatchOption(it.providerName, adSupported = true) }
+    return RegionAvailability(
+        source = "tmdb",
+        region = region,
+        freeOptions = (free + ads).distinctBy { it.providerName },
+        subscriptionOptions = this?.flatrate.orEmpty().map { WatchOption(it.providerName) },
+        moreInfoUrl = this?.link
+    )
+}
 
 @Serializable
 data class TmdbProvider(
