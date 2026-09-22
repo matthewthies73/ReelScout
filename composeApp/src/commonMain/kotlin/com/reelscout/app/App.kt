@@ -18,7 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownTypography
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -56,12 +62,34 @@ fun App() {
                     Text(status, style = MaterialTheme.typography.bodySmall)
                 }
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(state.messages) { message ->
-                        Text((if (message.fromUser) "You: " else "ReelScout: ") + message.text)
+                        if (message.fromUser) {
+                            Text(message.text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            AssistantMessage(message.text)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Claude answers in Markdown; links open in the platform browser. */
+@Composable
+internal fun AssistantMessage(markdown: String) {
+    Markdown(
+        content = markdown,
+        typography = markdownTypography(
+            textLink = TextLinkStyles(
+                SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    textDecoration = TextDecoration.Underline
+                )
+            )
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
 }

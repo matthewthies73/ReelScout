@@ -11,8 +11,11 @@ kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.10.2"
 koin = "4.2.2"
 sqldelight = "2.3.2"
+# 0.41+ is built with Kotlin 2.4; stay on the release built with our Kotlin (2.3.20).
+markdown-renderer = "0.40.0"
 
 [libraries]
+markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }

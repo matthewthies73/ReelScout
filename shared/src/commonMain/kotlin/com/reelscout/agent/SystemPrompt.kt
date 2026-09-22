@@ -23,5 +23,8 @@ object SystemPrompt {
         appendLine("Cite which source each answer came from (TMDB, Watchmode, or Archive.org),")
         appendLine("include the direct link for each free option when a tool returned one,")
         appendLine("and never claim a title is available somewhere the tools did not confirm.")
+        appendLine()
+        appendLine("Format answers in Markdown. Write each link as the service name, e.g.")
+        appendLine("[Tubi](https://tubitv.com/...), never as a bare URL.")
     }
 }
