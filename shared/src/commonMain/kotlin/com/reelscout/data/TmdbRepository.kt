@@ -9,7 +9,7 @@ import io.ktor.client.request.parameter
 import kotlinx.serialization.Serializable
 
 /**
- * Talks to TMDB *through the Cloudflare Worker relay* at `/api/tmdb/*` — never directly,
+ * Talks to TMDB *through the Cloudflare Worker relay* at `/api/tmdb/…` — never directly,
  * so the TMDB key stays server-side. See edge/src/index.ts for the matching route.
  */
 class TmdbRepository(private val client: HttpClient) {

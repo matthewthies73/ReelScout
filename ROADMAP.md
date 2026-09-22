@@ -35,7 +35,8 @@ No scraping, no torrent/indexer integration — everything above is an official,
 ### Module layout
 
 ```
-/composeApp        — Compose Multiplatform UI (androidMain, iosMain, jvmMain, wasmJsMain, commonMain)
+/androidApp        — Android application module (MainActivity, Application class) - AGP 9 keeps it separate from the KMP modules
+/composeApp        — Compose Multiplatform UI (androidMain, iosMain, desktopMain, wasmJsMain, commonMain)
 /shared             — domain models, repositories, Ktor HTTP client, the agent tool-use loop (commonMain, used by composeApp)
 /edge               — Cloudflare Worker(s): thin secret-holding relay (TypeScript)
 ```
@@ -126,10 +127,11 @@ jobs:
 
 ```
 reelscout/
+├── androidApp/
 ├── composeApp/
 │   ├── src/androidMain/
 │   ├── src/iosMain/
-│   ├── src/jvmMain/
+│   ├── src/desktopMain/
 │   ├── src/wasmJsMain/
 │   └── src/commonMain/
 ├── shared/

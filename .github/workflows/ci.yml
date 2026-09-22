@@ -25,7 +25,7 @@ jobs:
       - name: Test :shared (commonTest, jvm)
         run: ./gradlew :shared:desktopTest
       - name: Assemble Android debug
-        run: ./gradlew :composeApp:assembleDebug
+        run: ./gradlew :androidApp:assembleDebug
       - name: Build Wasm/Web distribution
         run: ./gradlew :composeApp:wasmJsBrowserDistribution
 
