@@ -12,8 +12,10 @@ struct ComposeView: UIViewControllerRepresentable {
 
 struct ContentView: View {
     var body: some View {
+        // Compose lays out under the status bar and home indicator itself (Scaffold and
+        // TopAppBar apply the safe-area insets), so SwiftUI mustn't inset it as well.
         ComposeView()
-                .ignoresSafeArea(.keyboard) // Compose has own keyboard handler
+                .ignoresSafeArea()
     }
 }
 
