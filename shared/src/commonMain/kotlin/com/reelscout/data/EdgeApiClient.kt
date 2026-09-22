@@ -20,6 +20,10 @@ object EdgeApiConfig {
     // Points at the Worker route (reelscout.bitterinfantproductions.com/api/* - see
     // edge/wrangler.toml). Override to http://localhost:8787 for local `wrangler dev`.
     var baseUrl: String = "https://reelscout.bitterinfantproductions.com"
+
+    // Off by default: on Wasm and iOS, Ktor's logger prints every request to the browser
+    // console / device log. Set before the HttpClient is created (initKoin) when debugging.
+    var logHttp: Boolean = false
 }
 
 /** Platform HTTP engine — see the androidMain/iosMain/desktopMain/wasmJsMain actuals. */
@@ -43,5 +47,5 @@ internal fun io.ktor.client.HttpClientConfig<*>.installEdgeDefaults() {
         requestTimeoutMillis = 120_000
         socketTimeoutMillis = 120_000
     }
-    install(Logging) { level = LogLevel.INFO }
+    install(Logging) { level = if (EdgeApiConfig.logHttp) LogLevel.INFO else LogLevel.NONE }
 }
