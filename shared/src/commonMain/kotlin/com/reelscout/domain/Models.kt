@@ -19,19 +19,30 @@ data class Title(
     val posterPath: String?
 )
 
+/** One place to watch a title. `adSupported` is null when the source doesn't say. */
 @Serializable
 data class WatchOption(
     val providerName: String,
-    val isFree: Boolean,
-    val isAdSupported: Boolean,
-    val deepLinkUrl: String?
+    val adSupported: Boolean? = null,
+    val url: String? = null
 )
 
+/**
+ * Where a title can be watched in one region, according to one source. This is what the
+ * availability tools hand back to Claude, so it's kept small - see ToolExecutor.
+ */
 @Serializable
-data class TitleAvailability(
-    val title: Title,
+data class RegionAvailability(
+    val source: String, // "tmdb" | "watchmode"
     val region: String,
     val freeOptions: List<WatchOption>,
     val subscriptionOptions: List<WatchOption>,
-    val source: String // "tmdb" | "watchmode" | "archive.org"
+    val moreInfoUrl: String? = null
+)
+
+@Serializable
+data class PublicDomainFilm(
+    val title: String,
+    val year: Int?,
+    val url: String
 )

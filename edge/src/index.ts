@@ -122,7 +122,9 @@ async function proxyGet(
 
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(`${upstreamBase}/${path}`);
-  incoming.searchParams.forEach((value, key) => upstreamUrl.searchParams.set(key, value));
+  // append, not set: Archive.org takes repeated keys (fl[]=identifier&fl[]=title).
+  incoming.searchParams.forEach((value, key) => upstreamUrl.searchParams.append(key, value));
+  // set, not append: replaces any client-supplied copy of the secret params.
   for (const [key, value] of Object.entries(extraParams)) upstreamUrl.searchParams.set(key, value);
 
   return fetch(upstreamUrl);
