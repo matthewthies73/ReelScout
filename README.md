@@ -15,7 +15,8 @@ Full architecture, rationale, and the phased build plan are in **[ROADMAP.md](./
 ## Module layout
 
 ```
-composeApp/   Compose Multiplatform UI - androidMain, iosMain, jvmMain, wasmJsMain, commonMain
+androidApp/   Android application module - MainActivity + Application class, hosts composeApp
+composeApp/   Compose Multiplatform UI - androidMain, iosMain, desktopMain, wasmJsMain, commonMain
 shared/       domain models, TMDB/Watchmode/Archive.org repositories, the agent tool-use loop
 edge/         Cloudflare Worker - the entire v1 backend, a thin secret-holding relay (TypeScript)
 iosApp/       Xcode project that hosts the composeApp iOS framework
@@ -23,20 +24,19 @@ iosApp/       Xcode project that hosts the composeApp iOS framework
 
 ## Status
 
-Phase 0/1 scaffold: all four Gradle targets are wired up with a placeholder screen, the
-`shared` module has real (not stubbed) TMDB/Watchmode/Archive.org repositories and the
-full agent tool-use loop, and the `edge` Worker has its four proxy routes implemented.
-Nothing is deployed yet and the UI isn't wired to the agent yet — see ROADMAP.md's phased
-plan for what's next.
+Phase 4 in progress: all four Gradle targets build, the chat UI drives the real agent
+tool-use loop in `shared` (TMDB/Watchmode/Archive.org repositories, not stubs), and the
+`edge` Worker relay is deployed. The Cloudflare Pages web deploy isn't set up yet — see
+ROADMAP.md's phased plan for what's next.
 
 ## Building
 
-Requires JDK 17. First run needs network access — the Gradle wrapper downloads Gradle
-8.13, and Kotlin/Native downloads iOS toolchain components.
+Requires JDK 17+. First run needs network access — the Gradle wrapper downloads Gradle
+9.6, and Kotlin/Native downloads iOS toolchain components.
 
 ```bash
 # Android (debug APK)
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 
 # Desktop
 ./gradlew :composeApp:run

@@ -15,3 +15,16 @@ routes = [
 #   ANTHROPIC_API_KEY
 #   TMDB_API_KEY
 #   WATCHMODE_API_KEY
+
+# Per-client-IP rate limits (see rateLimited() in src/index.ts). One question can take up
+# to 6 Claude calls (AgentLoop.maxTurns) plus a handful of data lookups, so these allow a
+# few questions a minute per person. namespace_id just has to be unique in the account.
+[[ratelimits]]
+name = "ANTHROPIC_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "DATA_LIMITER"
+namespace_id = "1002"
+simple = { limit = 60, period = 60 }

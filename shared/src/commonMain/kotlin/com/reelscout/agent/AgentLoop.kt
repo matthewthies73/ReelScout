@@ -13,7 +13,11 @@ package com.reelscout.agent
 class AgentLoop(
     private val anthropic: AnthropicClient,
     private val toolExecutor: ToolExecutor,
-    private val model: String = "claude-sonnet-4-5",
+    // The relay pins the model and caps max_tokens server-side (edge/src/index.ts); these
+    // are sent to keep the request a valid Messages API call and should match the relay.
+    private val model: String = "claude-sonnet-5",
+    // Adaptive thinking counts toward this, so it has to leave room beyond the answer itself.
+    private val maxTokens: Int = 8192,
     private val maxTurns: Int = 6
 ) {
     suspend fun run(userQuery: String, onToolCall: suspend (toolName: String) -> Unit = {}): String {
@@ -25,7 +29,7 @@ class AgentLoop(
             val response = anthropic.sendMessage(
                 AnthropicRequest(
                     model = model,
-                    maxTokens = 1024,
+                    maxTokens = maxTokens,
                     system = SystemPrompt.text,
                     messages = messages,
                     tools = Tools.all

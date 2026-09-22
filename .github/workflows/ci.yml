@@ -25,7 +25,7 @@ jobs:
       - name: Test :shared (commonTest, jvm)
         run: ./gradlew :shared:desktopTest
       - name: Assemble Android debug
-        run: ./gradlew :composeApp:assembleDebug
+        run: ./gradlew :androidApp:assembleDebug
       - name: Build Wasm/Web distribution
         run: ./gradlew :composeApp:wasmJsBrowserDistribution
 
@@ -38,6 +38,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - run: npm install
       - run: npm run typecheck

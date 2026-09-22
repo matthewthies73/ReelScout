@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 class ArchiveOrgRepository(private val client: HttpClient) {
 
     suspend fun searchPublicDomainFilm(title: String): ArchiveOrgSearchResponse =
-        client.get("${EdgeApiConfig.baseUrl}/api/archive/advancedsearch") {
+        client.get("${EdgeApiConfig.baseUrl}/api/archive/advancedsearch.php") {
             parameter("q", "title:(\"$title\") AND mediatype:(movies)")
             parameter("output", "json")
         }.body()
