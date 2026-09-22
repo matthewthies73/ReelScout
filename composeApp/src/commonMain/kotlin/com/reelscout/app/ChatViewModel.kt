@@ -33,6 +33,12 @@ class ChatViewModel(private val agentLoop: AgentLoop) : ViewModel() {
         _uiState.update { it.copy(input = value) }
     }
 
+    /** Sends [question] as if typed - used by the example questions on the empty screen. */
+    fun ask(question: String) {
+        onInputChange(question)
+        send()
+    }
+
     fun newChat() {
         if (!_uiState.value.isLoading) _uiState.value = ChatUiState()
     }
@@ -47,14 +53,14 @@ class ChatViewModel(private val agentLoop: AgentLoop) : ViewModel() {
                 messages = it.messages + ChatMessage(fromUser = true, text = query),
                 input = "",
                 isLoading = true,
-                statusText = "Thinking..."
+                statusText = "Thinking…"
             )
         }
 
         viewModelScope.launch {
             val reply = try {
                 val answer = agentLoop.run(query, history) { toolName ->
-                    _uiState.update { it.copy(statusText = "Calling $toolName...") }
+                    _uiState.update { it.copy(statusText = statusFor(toolName)) }
                 }
                 ChatMessage(fromUser = false, text = answer)
             } catch (e: CancellationException) {
@@ -67,6 +73,15 @@ class ChatViewModel(private val agentLoop: AgentLoop) : ViewModel() {
                 it.copy(messages = it.messages + reply, isLoading = false, statusText = null)
             }
         }
+    }
+
+    // What the user sees while each tool runs (see Tools.kt for the tool names).
+    private fun statusFor(toolName: String): String = when (toolName) {
+        "search_titles" -> "Looking up the title on TMDB…"
+        "get_watch_providers" -> "Checking where it's streaming…"
+        "get_watchmode_sources" -> "Cross-checking with Watchmode…"
+        "search_public_domain" -> "Searching Archive.org's public-domain films…"
+        else -> "Working…"
     }
 
     // Questions that failed are left out, so Claude never sees an unanswered turn.
