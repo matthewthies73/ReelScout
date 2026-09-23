@@ -31,7 +31,9 @@ jobs:
           expected=$(grep -o 'reelscout\.js?v=[0-9a-f]*' composeApp/build/dist/wasmJs/productionExecutable/index.html)
           for attempt in $(seq 1 12); do
             page=$(curl -fsS "$site/" || true)
-            if echo "$page" | grep -q '<title>ReelScout</title>' && echo "$page" | grep -qF "$expected"; then
+            # Don't match the <title> text: it changed with the rename to "Reel Scout" and
+            # failed this check. The versioned loader alone identifies this build.
+            if echo "$page" | grep -qF "$expected"; then
               curl -fsS -o /dev/null "$site/$expected"
               echo "Live site serves this build ($expected)"
               exit 0
