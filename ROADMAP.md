@@ -170,6 +170,12 @@ reelscout/
 - **Backend for v1:** thin-relay Cloudflare Worker only. Containers (full Kotlin/Ktor backend) is a confirmed v2 item, not part of the initial build.
 - **Default region:** US, for both provider lookups and which free/ad-supported services are considered. A region picker is Phase 5 polish.
 - **Reelgood data source:** left out. Sticking with TMDB + Watchmode + Archive.org as the fully self-serve, reproducible data layer.
+- **Search analytics:** the relay logs each answered question (question, answer, tools
+  used, outcome; no IP or user id) to Cloudflare D1 and serves a public total + weekly top
+  five at `/api/stats`. Recording lives in the relay, not the clients, so the numbers can't
+  be inflated with a fake "log this" call. Top-five is raw user text shown publicly, so
+  it's limited to repeated, short, standalone questions; if it's ever abused, switch it to
+  the TMDB titles Claude actually looked up.
 - **Live site:** `reelscout.bitterinfantproductions.com` is the `reelscout-web` Cloudflare
   Pages project's custom domain (the Wasm app); the Worker's `/api/*` route on the same
   hostname takes precedence, so the app and relay are same-origin. All three secrets
