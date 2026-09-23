@@ -1,0 +1,7 @@
+# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/).
+#
+# reelscout.js keeps the same name in every build and loads that build's content-hashed
+# .wasm files. The zone's default 4-hour browser cache on .js kept visitors on the old
+# app after a deploy, so make browsers revalidate it (a cheap 304 when unchanged).
+/reelscout.js
+  Cache-Control: no-cache
