@@ -29,3 +29,6 @@ edge/.wrangler/
 .env
 .env.local
 edge/.dev.vars
+
+# Python venv for branding/generate_icons.py
+.venv/
