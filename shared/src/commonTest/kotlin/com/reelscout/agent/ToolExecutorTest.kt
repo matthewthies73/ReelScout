@@ -47,7 +47,7 @@ class ToolExecutorTest {
         {"id": 10331, "results": {
           "US": {
             "link": "https://www.themoviedb.org/movie/10331/watch?locale=US",
-            "free": [{"provider_name": "Plex", "logo_path": "/a.png"}],
+            "free": [{"provider_name": "Plex", "logo_path": "/a.png"}, {"provider_name": "Kanopy", "logo_path": "/k.png"}],
             "ads": [{"provider_name": "Plex", "logo_path": "/a.png"}, {"provider_name": "Pluto TV", "logo_path": "/b.png"}],
             "flatrate": [{"provider_name": "Peacock", "logo_path": "/c.png"}]
           },
@@ -69,6 +69,7 @@ class ToolExecutorTest {
             availability.freeOptions
         )
         assertEquals(listOf(WatchOption("Peacock")), availability.subscriptionOptions)
+        assertEquals(listOf(WatchOption("Kanopy", adSupported = false)), availability.libraryCardOptions)
         assertEquals("https://www.themoviedb.org/movie/10331/watch?locale=US", availability.moreInfoUrl)
     }
 
@@ -90,6 +91,7 @@ class ToolExecutorTest {
               {"name": "Pluto TV", "type": "free", "region": "US", "web_url": "https://pluto.tv/notld", "format": "SD"},
               {"name": "Pluto TV", "type": "free", "region": "US", "web_url": null, "format": "HD"},
               {"name": "Tubi TV", "type": "free", "region": "US", "web_url": "https://tubitv.com/notld"},
+              {"name": "Hoopla", "type": "free", "region": "US", "web_url": "https://www.hoopladigital.com/title/1"},
               {"name": "Peacock", "type": "sub", "region": "US", "web_url": "https://peacock.com/notld", "format": "HD"},
               {"name": "Peacock", "type": "sub", "region": "US", "web_url": "https://peacock.com/notld", "format": "4K"},
               {"name": "Amazon", "type": "rent", "region": "US", "web_url": "https://amazon.com/notld", "price": 3.99},
@@ -107,6 +109,7 @@ class ToolExecutorTest {
             availability.freeOptions
         )
         assertEquals(listOf(WatchOption("Peacock")), availability.subscriptionOptions)
+        assertEquals(listOf(WatchOption("Hoopla", url = "https://www.hoopladigital.com/title/1")), availability.libraryCardOptions)
     }
 
     @Test

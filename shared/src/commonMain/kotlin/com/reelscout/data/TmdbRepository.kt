@@ -77,11 +77,13 @@ data class TmdbRegionProviders(
 internal fun TmdbRegionProviders?.toAvailability(region: String): RegionAvailability {
     val free = this?.free.orEmpty().map { WatchOption(it.providerName, adSupported = false) }
     val ads = this?.ads.orEmpty().map { WatchOption(it.providerName, adSupported = true) }
+    val (freeForAnyone, withLibraryCard) = FreeSourceRules.split((free + ads).distinctBy { it.providerName })
     return RegionAvailability(
         source = "tmdb",
         region = region,
-        freeOptions = (free + ads).distinctBy { it.providerName },
+        freeOptions = freeForAnyone,
         subscriptionOptions = this?.flatrate.orEmpty().map { WatchOption(it.providerName) },
+        libraryCardOptions = withLibraryCard,
         moreInfoUrl = this?.link
     )
 }
