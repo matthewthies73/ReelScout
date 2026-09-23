@@ -171,6 +171,16 @@ account. Only the total count and the week's most-asked short questions are publ
 
 Architecture notes and the full build plan are in [ROADMAP.md](./ROADMAP.md).
 
+## Credits
+
+- **App icon artwork** was created with [Dreamina](https://dreamina.capcut.com/ai-tool/home).
+  Each platform's icons, and the Play Store feature graphic, are generated from it by
+  [`branding/generate_icons.py`](./branding/generate_icons.py).
+- Streaming availability data from [TMDB](https://www.themoviedb.org/) (powered by
+  JustWatch) and [Watchmode](https://www.watchmode.com/); public-domain films from the
+  [Internet Archive](https://archive.org/). This product uses the TMDB API but is not
+  endorsed or certified by TMDB.
+
 ## License
 
 [MIT](./LICENSE)

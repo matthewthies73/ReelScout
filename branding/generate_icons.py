@@ -1,7 +1,8 @@
 """Generates every platform's app icon from branding/icon-master-1024.png.
 
 The master is the full-bleed square (gradient to the edges, no rounded corners), cropped
-from the designer's 2048px export just inside its pre-rounded corners. Each platform
+from the 2048px artwork created with Dreamina (https://dreamina.capcut.com/ai-tool/home),
+just inside its pre-rounded corners. Each platform
 applies its own mask, or none, so they get different variants:
 
   iOS, Play Store       full-bleed square - the OS / store rounds the corners
