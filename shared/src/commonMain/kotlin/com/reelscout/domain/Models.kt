@@ -37,6 +37,8 @@ data class RegionAvailability(
     val region: String,
     val freeOptions: List<WatchOption>,
     val subscriptionOptions: List<WatchOption>,
+    // Free, but only with a participating public library card (see FreeSourceRules).
+    val libraryCardOptions: List<WatchOption> = emptyList(),
     val moreInfoUrl: String? = null
 )
 

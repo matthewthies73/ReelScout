@@ -41,10 +41,12 @@ internal fun List<WatchmodeSource>.toAvailability(region: String): RegionAvailab
         .groupBy { it.name }
         .map { (name, rows) -> WatchOption(name, url = rows.firstNotNullOfOrNull { it.webUrl }) }
 
+    val (freeForAnyone, withLibraryCard) = FreeSourceRules.split(optionsOfType("free"))
     return RegionAvailability(
         source = "watchmode",
         region = region,
-        freeOptions = optionsOfType("free"),
-        subscriptionOptions = optionsOfType("sub").map { it.copy(url = null) }
+        freeOptions = freeForAnyone,
+        subscriptionOptions = optionsOfType("sub").map { it.copy(url = null) },
+        libraryCardOptions = withLibraryCard
     )
 }
