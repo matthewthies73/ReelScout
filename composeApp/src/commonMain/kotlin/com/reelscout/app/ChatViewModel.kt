@@ -6,6 +6,7 @@ import com.reelscout.agent.AgentLoop
 import com.reelscout.agent.Exchange
 import com.reelscout.data.SearchStats
 import com.reelscout.data.StatsRepository
+import com.reelscout.domain.Region
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,8 @@ data class ChatUiState(
     val isLoading: Boolean = false,
     val statusText: String? = null,
     // Null until the first load succeeds; the footer stays hidden rather than showing 0.
-    val stats: SearchStats? = null
+    val stats: SearchStats? = null,
+    val region: Region = Region.DEFAULT
 )
 
 /**
@@ -30,10 +32,11 @@ data class ChatUiState(
  */
 class ChatViewModel(
     private val agentLoop: AgentLoop,
-    private val statsRepository: StatsRepository
+    private val statsRepository: StatsRepository,
+    private val regionStore: RegionStore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ChatUiState())
+    private val _uiState = MutableStateFlow(ChatUiState(region = regionStore.load()))
     val uiState: StateFlow<ChatUiState> = _uiState
 
     init {
@@ -51,7 +54,15 @@ class ChatViewModel(
     }
 
     fun newChat() {
-        if (!_uiState.value.isLoading) _uiState.value = ChatUiState()
+        if (!_uiState.value.isLoading) {
+            _uiState.update { ChatUiState(stats = it.stats, region = it.region) }
+        }
+    }
+
+    /** Applies from the next question on; earlier answers stay as they were. */
+    fun setRegion(region: Region) {
+        regionStore.save(region)
+        _uiState.update { it.copy(region = region) }
     }
 
     fun send() {
@@ -59,6 +70,7 @@ class ChatViewModel(
         if (query.isBlank() || _uiState.value.isLoading) return
 
         val history = answeredExchanges(_uiState.value.messages)
+        val region = _uiState.value.region
         _uiState.update {
             it.copy(
                 messages = it.messages + ChatMessage(fromUser = true, text = query),
@@ -70,7 +82,7 @@ class ChatViewModel(
 
         viewModelScope.launch {
             val reply = try {
-                val answer = agentLoop.run(query, history) { toolName ->
+                val answer = agentLoop.run(query, history, region) { toolName ->
                     _uiState.update { it.copy(statusText = statusFor(toolName)) }
                 }
                 ChatMessage(fromUser = false, text = answer)

@@ -168,7 +168,7 @@ reelscout/
 
 - **Project name:** ReelScout — used for the repo, `wrangler.toml` names, and the Cloudflare Pages project (`reelscout-web`).
 - **Backend for v1:** thin-relay Cloudflare Worker only. Containers (full Kotlin/Ktor backend) is a confirmed v2 item, not part of the initial build.
-- **Default region:** US, for both provider lookups and which free/ad-supported services are considered. A region picker is Phase 5 polish.
+- **Region:** a picker in the top bar (15 countries, `Region` in `shared/domain`), remembered per device and defaulting to the device's region if supported, else US. It goes into the system prompt and is the tools' default; a country the user names explicitly still wins. Archive.org public-domain results reflect US status, and answers say so outside the US.
 - **Reelgood data source:** left out. Sticking with TMDB + Watchmode + Archive.org as the fully self-serve, reproducible data layer.
 - **Search analytics:** the relay logs each answered question (question, answer, tools
   used, outcome; no IP or user id) to Cloudflare D1 and serves a public total + weekly top

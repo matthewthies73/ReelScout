@@ -4,9 +4,38 @@ import kotlinx.serialization.Serializable
 
 enum class MediaType { MOVIE, TV }
 
-enum class Region(val code: String) {
-    US("US")
-    // Add more as region support expands (see ROADMAP.md, Phase 5).
+/**
+ * Countries the region picker offers (ROADMAP.md, Phase 5). Codes are ISO 3166-1 alpha-2, as
+ * TMDB's watch/providers and Watchmode's regions= expect. TMDB covers all of these; Watchmode's
+ * coverage is thinner outside the US, CA, GB and AU, where TMDB carries more of the answer.
+ */
+enum class Region(
+    val code: String,
+    val displayName: String,
+    // For use mid-sentence: "in the United States", "in Canada".
+    val inSentence: String = displayName
+) {
+    US("US", "United States", "the United States"),
+    CA("CA", "Canada"),
+    GB("GB", "United Kingdom", "the United Kingdom"),
+    IE("IE", "Ireland"),
+    AU("AU", "Australia"),
+    NZ("NZ", "New Zealand"),
+    DE("DE", "Germany"),
+    FR("FR", "France"),
+    ES("ES", "Spain"),
+    IT("IT", "Italy"),
+    NL("NL", "Netherlands", "the Netherlands"),
+    SE("SE", "Sweden"),
+    BR("BR", "Brazil"),
+    MX("MX", "Mexico"),
+    IN("IN", "India");
+
+    companion object {
+        val DEFAULT = US
+
+        fun fromCode(code: String?): Region? = entries.firstOrNull { it.code.equals(code, ignoreCase = true) }
+    }
 }
 
 @Serializable

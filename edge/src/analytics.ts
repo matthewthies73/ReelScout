@@ -26,6 +26,7 @@ export interface CompletedSearch {
   answer: string;
   outcome: string;
   toolsUsed: string[];
+  region: string | null;
 }
 
 export interface SearchStats {
@@ -37,7 +38,10 @@ interface Block {
   type?: unknown;
   text?: unknown;
   name?: unknown;
+  input?: unknown;
 }
+
+const REGION_TOOLS = new Set(["get_watch_providers", "get_watchmode_sources"]);
 
 interface Message {
   role?: unknown;
@@ -85,11 +89,16 @@ export function completedSearch(requestMessages: unknown[], response: { stop_rea
   if (questionIndex < 0) return null;
 
   const toolsUsed: string[] = [];
+  let region: string | null = null;
   for (const message of messages.slice(questionIndex + 1)) {
     if (message?.role !== "assistant") continue;
     for (const block of blocksOf(message)) {
-      if (block?.type === "tool_use" && typeof block.name === "string" && !toolsUsed.includes(block.name)) {
-        toolsUsed.push(block.name);
+      if (block?.type !== "tool_use" || typeof block.name !== "string") continue;
+      if (!toolsUsed.includes(block.name)) toolsUsed.push(block.name);
+      // The first region the agent looked up availability for.
+      const input = block.input as { region?: unknown } | undefined;
+      if (region === null && REGION_TOOLS.has(block.name) && typeof input?.region === "string") {
+        region = input.region.toUpperCase().slice(0, 8);
       }
     }
   }
@@ -101,15 +110,16 @@ export function completedSearch(requestMessages: unknown[], response: { stop_rea
     answer: textOf(responseBlocks).slice(0, MAX_LOGGED_ANSWER_CHARS),
     outcome: typeof response.stop_reason === "string" ? response.stop_reason : "unknown",
     toolsUsed,
+    region,
   };
 }
 
 export async function recordSearch(db: D1Database, search: CompletedSearch): Promise<void> {
   await db
     .prepare(
-      "INSERT INTO searches (query, normalized, is_follow_up, answer, outcome, tools_used) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO searches (query, normalized, is_follow_up, answer, outcome, tools_used, region) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
-    .bind(search.query, normalize(search.query), search.isFollowUp ? 1 : 0, search.answer, search.outcome, search.toolsUsed.join(","))
+    .bind(search.query, normalize(search.query), search.isFollowUp ? 1 : 0, search.answer, search.outcome, search.toolsUsed.join(","), search.region)
     .run();
 }
 
