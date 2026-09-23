@@ -1,9 +1,21 @@
 package com.reelscout.agent
 
+import com.reelscout.data.commonJson
 import com.reelscout.domain.Region
+import com.reelscout.domain.Title
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /** One finished question and answer, carried into later questions so follow-ups work. */
 data class Exchange(val question: String, val answer: String)
+
+/**
+ * Claude's answer, plus the titles the agent checked availability for while producing it
+ * (what the answer is about - the app offers to save these as favorites).
+ */
+data class AgentAnswer(val text: String, val titles: List<Title> = emptyList())
 
 /**
  * The actual "AI agent": a multi-turn tool-use loop, not a single prompt-and-response call.
@@ -34,7 +46,7 @@ class AgentLoop(
         history: List<Exchange> = emptyList(),
         region: Region = Region.DEFAULT,
         onToolCall: suspend (toolName: String) -> Unit = {}
-    ): String {
+    ): AgentAnswer {
         val messages = history.takeLast(MAX_HISTORY_EXCHANGES).flatMap { exchange ->
             listOf(
                 AnthropicMessage(role = "user", content = listOf(ContentBlock.Text(exchange.question))),
@@ -42,6 +54,10 @@ class AgentLoop(
             )
         }.toMutableList()
         messages += AnthropicMessage(role = "user", content = listOf(ContentBlock.Text(userQuery)))
+
+        // Titles from search_titles, and the ids availability was then checked for, in order.
+        val foundTitles = mutableMapOf<Int, Title>()
+        val checkedIds = linkedSetOf<Int>()
 
         repeat(maxTurns) {
             val response = anthropic.sendMessage(
@@ -58,12 +74,13 @@ class AgentLoop(
 
             val toolUses = response.content.filterIsInstance<ContentBlock.ToolUse>()
             if (toolUses.isEmpty() || response.stopReason != "tool_use") {
-                return finalAnswer(response)
+                return AgentAnswer(finalAnswer(response), checkedIds.mapNotNull { foundTitles[it] })
             }
 
             val toolResults = toolUses.map { toolUse ->
                 onToolCall(toolUse.name)
                 val result = runCatching { toolExecutor.execute(toolUse.name, toolUse.input, region.code) }
+                result.onSuccess { noteTitles(toolUse, it, foundTitles, checkedIds) }
                 ContentBlock.ToolResult(
                     toolUseId = toolUse.id,
                     content = result.getOrElse { "Error: ${it.message}" },
@@ -74,7 +91,16 @@ class AgentLoop(
             messages += AnthropicMessage(role = "user", content = toolResults)
         }
 
-        return "That took more steps than expected - try narrowing the question."
+        return AgentAnswer("That took more steps than expected - try narrowing the question.")
+    }
+
+    private fun noteTitles(toolUse: ContentBlock.ToolUse, result: String, found: MutableMap<Int, Title>, checked: MutableSet<Int>) {
+        when (toolUse.name) {
+            "search_titles" -> runCatching { commonJson.decodeFromString(ListSerializer(Title.serializer()), result) }
+                .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it } }
+            "get_watch_providers", "get_watchmode_sources" ->
+                runCatching { toolUse.input.jsonObject["tmdbId"]?.jsonPrimitive?.int }.getOrNull()?.let { checked += it }
+        }
     }
 
     private fun finalAnswer(response: AnthropicResponse): String {

@@ -3,7 +3,10 @@ package com.reelscout.app
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -34,6 +38,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +64,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.reelscout.data.SearchStats
+import com.reelscout.domain.MediaType
 import com.reelscout.domain.Region
+import com.reelscout.domain.Title
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -90,7 +97,10 @@ fun App() {
             onSend = viewModel::send,
             onAsk = viewModel::ask,
             onNewChat = viewModel::newChat,
-            onRegionChange = viewModel::setRegion
+            onRegionChange = viewModel::setRegion,
+            onToggleFavorite = viewModel::toggleFavorite,
+            onShowFavorites = viewModel::showFavorites,
+            onAskAbout = viewModel::askAbout
         )
     }
 }
@@ -104,12 +114,30 @@ internal fun ChatScreen(
     onSend: () -> Unit,
     onAsk: (String) -> Unit,
     onNewChat: () -> Unit,
-    onRegionChange: (Region) -> Unit
+    onRegionChange: (Region) -> Unit,
+    onToggleFavorite: (Title) -> Unit = {},
+    onShowFavorites: (Boolean) -> Unit = {},
+    onAskAbout: (Title) -> Unit = {}
 ) {
+    if (state.showFavorites) {
+        FavoritesDialog(
+            favorites = state.favorites,
+            enabled = !state.isLoading,
+            onAskAbout = onAskAbout,
+            onRemove = onToggleFavorite,
+            onDismiss = { onShowFavorites(false) }
+        )
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("ReelScout") },
+                navigationIcon = {
+                    TextButton(onClick = { onShowFavorites(true) }) {
+                        Text(if (state.favorites.isEmpty()) "Saved" else "Saved (${state.favorites.size})")
+                    }
+                },
                 actions = { RegionPicker(state.region, onRegionChange) }
             )
         },
@@ -130,7 +158,11 @@ internal fun ChatScreen(
                 if (state.messages.isEmpty()) {
                     EmptyState(region = state.region, onExampleClick = onAsk, enabled = !state.isLoading)
                 } else {
-                    MessageList(state.messages)
+                    MessageList(
+                        messages = state.messages,
+                        savedIds = state.favorites.mapTo(mutableSetOf()) { it.tmdbId },
+                        onToggleFavorite = onToggleFavorite
+                    )
                 }
                 // Floats just above the input bar. Inside the width-capped column, so it
                 // lines up with the Ask button on wide windows too.
@@ -285,7 +317,11 @@ internal fun formatCount(n: Long): String =
     n.toString().reversed().chunked(3).joinToString(",").reversed()
 
 @Composable
-internal fun MessageList(messages: List<ChatMessage>) {
+internal fun MessageList(
+    messages: List<ChatMessage>,
+    savedIds: Set<Int> = emptySet(),
+    onToggleFavorite: (Title) -> Unit = {}
+) {
     val listState = rememberLazyListState()
 
     // New messages are added at the bottom, below a possibly long answer. Keep the latest
@@ -308,11 +344,68 @@ internal fun MessageList(messages: List<ChatMessage>) {
                 message.isError -> Text(message.text, color = MaterialTheme.colorScheme.error)
                 else -> Column {
                     AssistantMessage(message.text)
+                    if (message.titles.isNotEmpty()) {
+                        SaveTitles(message.titles, savedIds, onToggleFavorite)
+                    }
                     HorizontalDivider(Modifier.padding(top = 16.dp))
                 }
             }
         }
     }
+}
+
+private fun Title.label(): String =
+    name + (releaseYear?.let { " ($it)" } ?: "") + (if (mediaType == MediaType.TV) " · TV" else "")
+
+/** "Save" chips for the titles an answer was about. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SaveTitles(titles: List<Title>, savedIds: Set<Int>, onToggle: (Title) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+        titles.forEach { title ->
+            val saved = title.tmdbId in savedIds
+            FilterChip(
+                selected = saved,
+                onClick = { onToggle(title) },
+                label = { Text((if (saved) "Saved " else "Save ") + title.label()) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FavoritesDialog(
+    favorites: List<Title>,
+    enabled: Boolean,
+    onAskAbout: (Title) -> Unit,
+    onRemove: (Title) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text("Saved titles") },
+        text = {
+            if (favorites.isEmpty()) {
+                Text("Nothing saved yet. Tap Save under an answer to keep a title here.")
+            } else {
+                LazyColumn {
+                    items(favorites, key = { it.tmdbId }) { title ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Availability changes, so tapping a favorite asks about it again.
+                            Text(
+                                title.label(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f).clickable(enabled = enabled) { onAskAbout(title) }.padding(vertical = 12.dp)
+                            )
+                            TextButton(onClick = { onRemove(title) }) { Text("Remove") }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 /** The user's question, as a right-aligned bubble so it stands apart from the answers. */

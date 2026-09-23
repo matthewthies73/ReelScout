@@ -4,6 +4,7 @@ import com.reelscout.agent.AgentLoop
 import com.reelscout.agent.AnthropicClient
 import com.reelscout.agent.ToolExecutor
 import com.reelscout.app.ChatViewModel
+import com.reelscout.app.FavoritesStore
 import com.reelscout.app.RegionStore
 import com.reelscout.data.ArchiveOrgRepository
 import com.reelscout.data.StatsRepository
@@ -26,12 +27,13 @@ val appModule = module {
     single { ArchiveOrgRepository(get()) }
     single { StatsRepository(get()) }
     single { RegionStore() }
+    single { FavoritesStore() }
     single { AnthropicClient(get()) }
     single { ToolExecutor(get(), get(), get()) }
     single { AgentLoop(get(), get()) }
     // viewModel, not single: tied to the screen's lifecycle, so viewModelScope is cancelled
     // when the screen goes away instead of living for the whole process.
-    viewModel { ChatViewModel(get(), get(), get()) }
+    viewModel { ChatViewModel(get(), get(), get(), get()) }
 }
 
 /** Called once per process from each platform's entry point - see the *Main source sets. */

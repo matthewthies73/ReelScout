@@ -7,13 +7,20 @@ import com.reelscout.agent.Exchange
 import com.reelscout.data.SearchStats
 import com.reelscout.data.StatsRepository
 import com.reelscout.domain.Region
+import com.reelscout.domain.Title
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ChatMessage(val fromUser: Boolean, val text: String, val isError: Boolean = false)
+data class ChatMessage(
+    val fromUser: Boolean,
+    val text: String,
+    val isError: Boolean = false,
+    // For answers: the titles the agent checked availability for, offered as "Save" chips.
+    val titles: List<Title> = emptyList()
+)
 
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
@@ -22,7 +29,9 @@ data class ChatUiState(
     val statusText: String? = null,
     // Null until the first load succeeds; the footer stays hidden rather than showing 0.
     val stats: SearchStats? = null,
-    val region: Region = Region.DEFAULT
+    val region: Region = Region.DEFAULT,
+    val favorites: List<Title> = emptyList(),
+    val showFavorites: Boolean = false
 )
 
 /**
@@ -33,10 +42,13 @@ data class ChatUiState(
 class ChatViewModel(
     private val agentLoop: AgentLoop,
     private val statsRepository: StatsRepository,
-    private val regionStore: RegionStore
+    private val regionStore: RegionStore,
+    private val favoritesStore: FavoritesStore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ChatUiState(region = regionStore.load()))
+    private val _uiState = MutableStateFlow(
+        ChatUiState(region = regionStore.load(), favorites = favoritesStore.load())
+    )
     val uiState: StateFlow<ChatUiState> = _uiState
 
     init {
@@ -55,8 +67,28 @@ class ChatViewModel(
 
     fun newChat() {
         if (!_uiState.value.isLoading) {
-            _uiState.update { ChatUiState(stats = it.stats, region = it.region) }
+            _uiState.update { ChatUiState(stats = it.stats, region = it.region, favorites = it.favorites) }
         }
+    }
+
+    /** Saves [title], or removes it if it's already saved. Newest first. */
+    fun toggleFavorite(title: Title) {
+        _uiState.update { state ->
+            val saved = state.favorites.any { it.tmdbId == title.tmdbId }
+            val favorites = if (saved) state.favorites.filterNot { it.tmdbId == title.tmdbId } else listOf(title) + state.favorites
+            favoritesStore.save(favorites)
+            state.copy(favorites = favorites)
+        }
+    }
+
+    fun showFavorites(show: Boolean) {
+        _uiState.update { it.copy(showFavorites = show) }
+    }
+
+    /** Re-checks a saved title - availability changes, so a favorite is a question to ask again. */
+    fun askAbout(title: Title) {
+        _uiState.update { it.copy(showFavorites = false) }
+        ask(title.name + (title.releaseYear?.let { " ($it)" } ?: ""))
     }
 
     /** Applies from the next question on; earlier answers stay as they were. */
@@ -85,7 +117,7 @@ class ChatViewModel(
                 val answer = agentLoop.run(query, history, region) { toolName ->
                     _uiState.update { it.copy(statusText = statusFor(toolName)) }
                 }
-                ChatMessage(fromUser = false, text = answer)
+                ChatMessage(fromUser = false, text = answer.text, titles = answer.titles)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
