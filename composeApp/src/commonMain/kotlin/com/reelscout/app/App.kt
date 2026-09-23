@@ -30,6 +30,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -39,10 +41,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -53,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.reelscout.data.SearchStats
+import com.reelscout.domain.Region
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -82,7 +89,8 @@ fun App() {
             onInputChange = viewModel::onInputChange,
             onSend = viewModel::send,
             onAsk = viewModel::ask,
-            onNewChat = viewModel::newChat
+            onNewChat = viewModel::newChat,
+            onRegionChange = viewModel::setRegion
         )
     }
 }
@@ -95,11 +103,15 @@ internal fun ChatScreen(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onAsk: (String) -> Unit,
-    onNewChat: () -> Unit
+    onNewChat: () -> Unit,
+    onRegionChange: (Region) -> Unit
 ) {
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("ReelScout") })
+            CenterAlignedTopAppBar(
+                title = { Text("ReelScout") },
+                actions = { RegionPicker(state.region, onRegionChange) }
+            )
         },
         bottomBar = {
             ChatInput(
@@ -116,7 +128,7 @@ internal fun ChatScreen(
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.widthIn(max = MaxContentWidth).fillMaxSize().padding(horizontal = 16.dp)) {
                 if (state.messages.isEmpty()) {
-                    EmptyState(onExampleClick = onAsk, enabled = !state.isLoading)
+                    EmptyState(region = state.region, onExampleClick = onAsk, enabled = !state.isLoading)
                 } else {
                     MessageList(state.messages)
                 }
@@ -133,8 +145,33 @@ internal fun ChatScreen(
     }
 }
 
+/** Country for availability lookups; applies from the next question. */
 @Composable
-private fun EmptyState(onExampleClick: (String) -> Unit, enabled: Boolean) {
+private fun RegionPicker(region: Region, onRegionChange: (Region) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) { Text("${region.code} ▾") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Region.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "${option.displayName} (${option.code})",
+                            fontWeight = if (option == region) FontWeight.SemiBold else null
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onRegionChange(option)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(region: Region, onExampleClick: (String) -> Unit, enabled: Boolean) {
     // Centered when there's room; scrolls when there isn't (e.g. a phone with the keyboard up).
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Column(
@@ -145,7 +182,7 @@ private fun EmptyState(onExampleClick: (String) -> Unit, enabled: Boolean) {
             Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(
                 "Ask about any movie or show. ReelScout checks live streaming data and public-domain " +
-                    "archives for free, legal ways to watch it in the US.",
+                    "archives for free, legal ways to watch it in ${region.inSentence}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

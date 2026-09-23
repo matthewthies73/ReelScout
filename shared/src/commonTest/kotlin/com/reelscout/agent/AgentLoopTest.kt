@@ -37,6 +37,8 @@ class AgentLoopTest {
                 claudeRequests += Json.parseToJsonElement((request.body as TextContent).text).jsonObject
                 val (status, body) = replies.removeFirst()
                 respond(body, status, json)
+            } else if (request.url.encodedPath.endsWith("/watch/providers")) {
+                respond("""{"results": {"GB": {}, "CA": {}}}""", HttpStatusCode.OK, json)
             } else {
                 respond("""{"results": [{"id": 10331, "title": "Night of the Living Dead", "media_type": "movie"}]}""", HttpStatusCode.OK, json)
             }
@@ -119,6 +121,39 @@ class AgentLoopTest {
         assertEquals(1, claudeRequests.size)
         assertEquals("rate_limit_error", failure.type)
         assertTrue("minute" in AgentLoop.describeFailure(failure))
+    }
+
+    private fun providersCall(input: String) =
+        """{"type": "tool_use", "id": "toolu_p", "name": "get_watch_providers", "input": $input}"""
+
+    /** The get_watch_providers tool_result sent back in the second request. */
+    private fun providersResult(): String =
+        claudeRequests[1].messages().last().jsonObject.getValue("content").jsonArray.single().jsonObject
+            .getValue("content").jsonPrimitive.content
+
+    @Test
+    fun `the picked region is in the system prompt and is the tools' default`() = runTest {
+        val loop = agent(
+            reply("tool_use", providersCall("""{"tmdbId": 10331, "mediaType": "movie"}""")),
+            reply("end_turn", text("ok"))
+        )
+
+        loop.run("night of the living dead", region = com.reelscout.domain.Region.GB)
+
+        assertTrue("United Kingdom" in claudeRequests[0].getValue("system").jsonPrimitive.content)
+        assertTrue("\"region\":\"GB\"" in providersResult(), providersResult())
+    }
+
+    @Test
+    fun `a country Claude names explicitly overrides the picked region`() = runTest {
+        val loop = agent(
+            reply("tool_use", providersCall("""{"tmdbId": 10331, "mediaType": "movie", "region": "CA"}""")),
+            reply("end_turn", text("ok"))
+        )
+
+        loop.run("is it free in Canada?", region = com.reelscout.domain.Region.GB)
+
+        assertTrue("\"region\":\"CA\"" in providersResult(), providersResult())
     }
 
     @Test

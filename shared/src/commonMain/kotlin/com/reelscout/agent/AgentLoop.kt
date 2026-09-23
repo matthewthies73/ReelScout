@@ -1,5 +1,7 @@
 package com.reelscout.agent
 
+import com.reelscout.domain.Region
+
 /** One finished question and answer, carried into later questions so follow-ups work. */
 data class Exchange(val question: String, val answer: String)
 
@@ -30,6 +32,7 @@ class AgentLoop(
     suspend fun run(
         userQuery: String,
         history: List<Exchange> = emptyList(),
+        region: Region = Region.DEFAULT,
         onToolCall: suspend (toolName: String) -> Unit = {}
     ): String {
         val messages = history.takeLast(MAX_HISTORY_EXCHANGES).flatMap { exchange ->
@@ -45,7 +48,7 @@ class AgentLoop(
                 AnthropicRequest(
                     model = model,
                     maxTokens = maxTokens,
-                    system = SystemPrompt.text,
+                    system = SystemPrompt.text(region),
                     messages = messages,
                     tools = Tools.all
                 )
@@ -60,7 +63,7 @@ class AgentLoop(
 
             val toolResults = toolUses.map { toolUse ->
                 onToolCall(toolUse.name)
-                val result = runCatching { toolExecutor.execute(toolUse.name, toolUse.input) }
+                val result = runCatching { toolExecutor.execute(toolUse.name, toolUse.input, region.code) }
                 ContentBlock.ToolResult(
                     toolUseId = toolUse.id,
                     content = result.getOrElse { "Error: ${it.message}" },

@@ -24,7 +24,7 @@ class ToolsTest {
 
     @Test
     fun `system prompt names the free-only sources`() {
-        val prompt = SystemPrompt.text
+        val prompt = SystemPrompt.text(com.reelscout.domain.Region.US)
         assertTrue("Tubi" in prompt || "public domain" in prompt)
         assertTrue("search_titles" in prompt)
     }

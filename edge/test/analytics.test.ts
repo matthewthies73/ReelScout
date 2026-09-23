@@ -7,7 +7,7 @@ const toolTurn = (id: string, ...names: string[]) => ({
   role: "assistant",
   content: [
     { type: "thinking", thinking: "", signature: "sig" },
-    ...names.map((name, i) => ({ type: "tool_use", id: `${id}${i}`, name, input: {} })),
+    ...names.map((name, i) => ({ type: "tool_use", id: `${id}${i}`, name, input: name === "search_titles" ? { query: "x" } : { tmdbId: 1, mediaType: "movie", region: "gb" } })),
   ],
 });
 const toolResults = (id: string, count: number) => ({
@@ -42,6 +42,7 @@ test("a finished search records the question, answer, outcome and tools in order
     answer: "Free on [Tubi](https://tubitv.com/x).",
     outcome: "end_turn",
     toolsUsed: ["search_titles", "get_watch_providers", "get_watchmode_sources"],
+    region: "GB",
   });
 });
 
@@ -58,6 +59,7 @@ test("a question after earlier exchanges is a follow-up, and only its own tools 
   assert.equal(search?.query, "What about the 1990 remake?");
   assert.equal(search?.isFollowUp, true);
   assert.deepEqual(search?.toolsUsed, ["search_titles"]);
+  assert.equal(search?.region, null, "no availability lookup, so no region");
 });
 
 test("string content and refusals are handled", () => {
