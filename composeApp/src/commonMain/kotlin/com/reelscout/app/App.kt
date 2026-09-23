@@ -2,12 +2,15 @@ package com.reelscout.app
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -18,13 +21,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,8 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,15 +99,7 @@ internal fun ChatScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("ReelScout") },
-                actions = {
-                    TextButton(
-                        onClick = onNewChat,
-                        enabled = state.messages.isNotEmpty() && !state.isLoading
-                    ) { Text("New chat") }
-                }
-            )
+            CenterAlignedTopAppBar(title = { Text("ReelScout") })
         },
         bottomBar = {
             ChatInput(
@@ -123,6 +120,14 @@ internal fun ChatScreen(
                 } else {
                     MessageList(state.messages)
                 }
+                // Floats just above the input bar. Inside the width-capped column, so it
+                // lines up with the Ask button on wide windows too.
+                if (state.messages.isNotEmpty() && !state.isLoading) {
+                    ExtendedFloatingActionButton(
+                        onClick = onNewChat,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 12.dp)
+                    ) { Text("New chat") }
+                }
             }
         }
     }
@@ -130,22 +135,25 @@ internal fun ChatScreen(
 
 @Composable
 private fun EmptyState(onExampleClick: (String) -> Unit, enabled: Boolean) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-        Text(
-            "Ask about any movie or show. ReelScout checks live streaming data and public-domain " +
-                "archives for free, legal ways to watch it in the US.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
-        )
-        ExampleQuestions.forEach { question ->
-            SuggestionChip(onClick = { onExampleClick(question) }, label = { Text(question) }, enabled = enabled)
+    // Centered when there's room; scrolls when there isn't (e.g. a phone with the keyboard up).
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Text(
+                "Ask about any movie or show. ReelScout checks live streaming data and public-domain " +
+                    "archives for free, legal ways to watch it in the US.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+            )
+            ExampleQuestions.forEach { question ->
+                SuggestionChip(onClick = { onExampleClick(question) }, label = { Text(question) }, enabled = enabled)
+            }
         }
     }
 }
@@ -250,7 +258,13 @@ internal fun MessageList(messages: List<ChatMessage>) {
         if (latestQuestion >= 0) listState.animateScrollToItem(latestQuestion)
     }
 
-    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        // Room to scroll the end of the last answer clear of the floating New chat button.
+        contentPadding = PaddingValues(bottom = 88.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
         items(messages) { message ->
             when {
                 message.fromUser -> UserMessage(message.text)
