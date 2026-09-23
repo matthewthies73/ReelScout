@@ -120,13 +120,13 @@ class AgentLoop(
         /** Turns a failed run() into something to show the user. */
         fun describeFailure(error: Throwable): String = when {
             error is AnthropicApiException && error.status == 429 ->
-                "ReelScout is getting a lot of questions right now - try again in a minute."
+                "Reel Scout is getting a lot of questions right now - try again in a minute."
             error is AnthropicApiException && error.status == 413 ->
                 "This conversation has gotten too long - start a new chat."
             error is AnthropicApiException && error.isRetryable ->
                 "Claude is busy right now - try again in a few seconds."
             error is AnthropicApiException -> "Something went wrong talking to Claude (${error.type})."
-            error is kotlinx.io.IOException -> "Couldn't reach ReelScout - check your connection and try again."
+            error is kotlinx.io.IOException -> "Couldn't reach Reel Scout - check your connection and try again."
             else -> "Something went wrong: ${error.message}"
         }
     }

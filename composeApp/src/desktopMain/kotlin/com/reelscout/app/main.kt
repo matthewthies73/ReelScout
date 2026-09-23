@@ -7,7 +7,7 @@ import com.reelscout.app.di.initKoin
 fun main() {
     initKoin()
     application {
-        Window(onCloseRequest = ::exitApplication, title = "ReelScout") {
+        Window(onCloseRequest = ::exitApplication, title = "Reel Scout") {
             App()
         }
     }

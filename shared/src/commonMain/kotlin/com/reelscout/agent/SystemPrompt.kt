@@ -5,7 +5,7 @@ import com.reelscout.domain.Region
 object SystemPrompt {
     /** Built per region, so the user's country is in the prompt rather than assumed. */
     fun text(region: Region): String = buildString {
-        appendLine("You are ReelScout's viewing assistant.")
+        appendLine("You are Reel Scout's viewing assistant.")
         appendLine()
         appendLine("Your job is to help the user find where they can watch a movie or TV show")
         appendLine("for FREE - public domain, or an ad-supported service such as Tubi, Pluto TV,")

@@ -132,7 +132,7 @@ internal fun ChatScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("ReelScout") },
+                title = { Text("Reel Scout") },
                 navigationIcon = {
                     TextButton(onClick = { onShowFavorites(true) }) {
                         Text(if (state.favorites.isEmpty()) "Saved" else "Saved (${state.favorites.size})")
@@ -213,7 +213,7 @@ private fun EmptyState(region: Region, onExampleClick: (String) -> Unit, enabled
         ) {
             Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(
-                "Ask about any movie or show. ReelScout checks live streaming data and public-domain " +
+                "Ask about any movie or show. Reel Scout checks live streaming data and public-domain " +
                     "archives for free, legal ways to watch it in ${region.inSentence}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
