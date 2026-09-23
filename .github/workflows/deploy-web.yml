@@ -24,10 +24,19 @@ jobs:
       # Smoke test: the custom domain serves the app, not a Pages error page.
       - name: Check the live site
         run: |
-          page=$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://reelscout.bitterinfantproductions.com/)
-          echo "$page" | grep -q '<title>ReelScout</title>'
           # The loader must be versioned (composeApp/build.gradle.kts), or browsers keep the
-          # previous build for the zone's 4-hour .js cache. Check it's there and loads.
-          loader=$(echo "$page" | grep -o 'reelscout\.js?v=[0-9a-f]*')
-          test -n "$loader"
-          curl -fsS -o /dev/null "https://reelscout.bitterinfantproductions.com/$loader"
+          # previous build for the zone's 4-hour .js cache. The edge can serve the previous
+          # index.html for a few seconds after "Deployment complete", so poll for up to a minute.
+          site=https://reelscout.bitterinfantproductions.com
+          expected=$(grep -o 'reelscout\.js?v=[0-9a-f]*' composeApp/build/dist/wasmJs/productionExecutable/index.html)
+          for attempt in $(seq 1 12); do
+            page=$(curl -fsS "$site/" || true)
+            if echo "$page" | grep -q '<title>ReelScout</title>' && echo "$page" | grep -qF "$expected"; then
+              curl -fsS -o /dev/null "$site/$expected"
+              echo "Live site serves this build ($expected)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Live index.html never referenced $expected"
+          exit 1
