@@ -35,5 +35,5 @@ simple = { limit = 60, period = 60 }
 [[d1_databases]]
 binding = "DB"
 database_name = "reelscout-analytics"
-database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+database_id = "b400ee0f-2e63-4fdf-a462-1b399934d5c0"
 migrations_dir = "migrations"
