@@ -1,0 +1,52 @@
+name: iOS
+
+# Builds the iOS app for the simulator (the Kotlin framework via Xcode's "Compile Kotlin"
+# phase, then the Swift app) so Xcode-side breaks show up in CI - the Linux CI job can't.
+# macOS minutes cost 10x Linux ones on private repos, so this only runs when something the
+# iOS build depends on changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'iosApp/**'
+      - 'composeApp/**'
+      - 'shared/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'iosApp/**'
+      - 'composeApp/**'
+      - 'shared/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache Gradle and Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: ios-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+      - run: chmod +x gradlew
+      - name: Build iOS app (simulator, unsigned)
+        run: |
+          xcodebuild -version
+          xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -configuration Debug \
+            -sdk iphonesimulator ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
