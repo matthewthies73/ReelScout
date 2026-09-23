@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.reelscout.data.SearchStats
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -106,8 +109,10 @@ internal fun ChatScreen(
                 input = state.input,
                 statusText = state.statusText,
                 isLoading = state.isLoading,
+                stats = state.stats,
                 onInputChange = onInputChange,
-                onSend = onSend
+                onSend = onSend,
+                onAsk = onAsk
             )
         }
     ) { padding ->
@@ -150,8 +155,10 @@ private fun ChatInput(
     input: String,
     statusText: String?,
     isLoading: Boolean,
+    stats: SearchStats?,
     onInputChange: (String) -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onAsk: (String) -> Unit
 ) {
     Surface(tonalElevation = 3.dp) {
         // safeDrawing covers the navigation bar / home indicator and, when it's open, the
@@ -191,10 +198,46 @@ private fun ChatInput(
                         modifier = Modifier.padding(start = 8.dp)
                     ) { Text("Ask") }
                 }
+                if (stats != null) {
+                    SearchFooter(stats, enabled = !isLoading, onAsk = onAsk)
+                }
             }
         }
     }
 }
+
+/** Global search count plus the week's most-asked questions (edge/src/analytics.ts). */
+@Composable
+private fun SearchFooter(stats: SearchStats, enabled: Boolean, onAsk: (String) -> Unit) {
+    Column(Modifier.padding(top = 8.dp)) {
+        Text(
+            "${formatCount(stats.totalSearches)} ${if (stats.totalSearches == 1L) "search" else "searches"} so far · logged anonymously",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (stats.topSearches.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                item {
+                    Text("Popular:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                items(stats.topSearches) { top ->
+                    AssistChip(
+                        onClick = { onAsk(top.query) },
+                        label = { Text(top.query, style = MaterialTheme.typography.labelSmall) },
+                        enabled = enabled
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 1234567 -> "1,234,567" (no String.format in common Kotlin). */
+internal fun formatCount(n: Long): String =
+    n.toString().reversed().chunked(3).joinToString(",").reversed()
 
 @Composable
 internal fun MessageList(messages: List<ChatMessage>) {

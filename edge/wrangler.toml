@@ -28,3 +28,12 @@ simple = { limit = 20, period = 60 }
 name = "DATA_LIMITER"
 namespace_id = "1002"
 simple = { limit = 60, period = 60 }
+
+# Search analytics (src/analytics.ts). Create the database once with
+#   npx wrangler d1 create reelscout-analytics
+# and paste the database_id it prints below. deploy-worker.yml applies migrations/.
+[[d1_databases]]
+binding = "DB"
+database_name = "reelscout-analytics"
+database_id = "b400ee0f-2e63-4fdf-a462-1b399934d5c0"
+migrations_dir = "migrations"

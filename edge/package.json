@@ -2,10 +2,15 @@
   "name": "reelscout-relay",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "searches:recent": "wrangler d1 execute reelscout-analytics --remote --command \"SELECT created_at, is_follow_up, outcome, tools_used, query FROM searches ORDER BY id DESC LIMIT 50\"",
+    "searches:top": "wrangler d1 execute reelscout-analytics --remote --command \"SELECT normalized, COUNT(*) AS asks FROM searches WHERE is_follow_up = 0 GROUP BY normalized ORDER BY asks DESC LIMIT 25\"",
+    "searches:answer": "wrangler d1 execute reelscout-analytics --remote --command"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260922.1",

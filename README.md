@@ -88,6 +88,25 @@ Once confirmed working, the two GitHub Actions workflows (`deploy-worker.yml`,
 `deploy-web.yml`) take over — they need `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID` as repo secrets. See ROADMAP.md for the full CI/CD writeup.
 
+## Search analytics
+
+Every answered question is logged by the relay in a Cloudflare D1 database
+(`reelscout-analytics`, schema in `edge/migrations/`): the question, Claude's answer, how
+the turn ended, which tools ran, whether it was a follow-up, and when. No IP address,
+device or account is stored. Logging happens in the relay rather than the apps, so clients
+can't inflate the numbers.
+
+The app footer shows the public part via `GET /api/stats`: the running total, and the
+five most-asked standalone questions of the past week (asked at least twice, 60 characters
+or fewer). Answers and the full history are only readable with Cloudflare credentials:
+
+```bash
+cd edge
+npm run searches:recent        # last 50: time, follow-up?, outcome, tools, question
+npm run searches:top           # most-asked questions, all time
+npm run searches:answer -- "SELECT query, answer FROM searches ORDER BY id DESC LIMIT 5"
+```
+
 ## Data sources
 
 TMDB (search + `watch/providers`, itself backed by JustWatch licensing data), Watchmode

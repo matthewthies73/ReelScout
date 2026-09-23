@@ -12,12 +12,15 @@
  * the Anthropic key on any model at any size, or burn the Watchmode quota.
  */
 
+import { completedSearch, readStats, recordSearch } from "./analytics";
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   TMDB_API_KEY: string;
   WATCHMODE_API_KEY: string;
   ANTHROPIC_LIMITER: RateLimit;
   DATA_LIMITER: RateLimit;
+  DB: D1Database;
 }
 
 // Pinned here, not trusted from the client - see the header comment.
@@ -72,7 +75,7 @@ async function rateLimited(limiter: RateLimit, request: Request): Promise<Respon
     : errorResponse(429, "rate_limit_error", "Too many requests - try again in a minute.", { "Retry-After": "60" });
 }
 
-async function proxyAnthropic(request: Request, env: Env): Promise<Response> {
+async function proxyAnthropic(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const raw = await request.text();
   if (raw.length > MAX_BODY_CHARS) {
     return errorResponse(413, "request_too_large", "Conversation too long for this relay.");
@@ -97,7 +100,7 @@ async function proxyAnthropic(request: Request, env: Env): Promise<Response> {
     if (incoming[field] !== undefined) body[field] = incoming[field];
   }
 
-  return fetch("https://api.anthropic.com/v1/messages", {
+  const upstream = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -106,6 +109,24 @@ async function proxyAnthropic(request: Request, env: Env): Promise<Response> {
     },
     body: JSON.stringify(body),
   });
+  if (!upstream.ok) return upstream;
+
+  // Read the answer so a finished search can be logged (src/analytics.ts), then pass the
+  // same bytes on. Logging runs after the response is sent and never fails the request.
+  const text = await upstream.text();
+  try {
+    const search = completedSearch(incoming.messages, JSON.parse(text));
+    if (search) {
+      ctx.waitUntil(recordSearch(env.DB, search).catch((err) => console.error("recordSearch failed", err)));
+    }
+  } catch (err) {
+    console.error("search analytics skipped", err);
+  }
+  // text() already decoded the body, so the upstream encoding/length headers no longer apply.
+  const headers = new Headers(upstream.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+  return new Response(text, { status: upstream.status, headers });
 }
 
 /** Forwards a GET to an allowlisted upstream path, copying the query string and adding `extraParams`. */
@@ -130,7 +151,7 @@ async function proxyGet(
   return fetch(upstreamUrl);
 }
 
-async function route(request: Request, env: Env, url: URL): Promise<Response> {
+async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
   // Cheap way to confirm a deploy actually landed: GET /api/health
   if (url.pathname === "/api/health") {
     return new Response(JSON.stringify({ status: "ok", service: "reelscout-relay" }), {
@@ -139,7 +160,18 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   }
 
   if (url.pathname === "/api/anthropic/messages" && request.method === "POST") {
-    return (await rateLimited(env.ANTHROPIC_LIMITER, request)) ?? (await proxyAnthropic(request, env));
+    return (await rateLimited(env.ANTHROPIC_LIMITER, request)) ?? (await proxyAnthropic(request, env, ctx));
+  }
+
+  // Public numbers only: the total and the week's top questions. Answers and full query
+  // history stay in D1 (see the searches:* scripts in package.json).
+  if (url.pathname === "/api/stats" && request.method === "GET") {
+    return (
+      (await rateLimited(env.DATA_LIMITER, request)) ??
+      new Response(JSON.stringify(await readStats(env.DB)), {
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      })
+    );
   }
 
   const dataRoutes: [string, (path: string) => Promise<Response>][] = [
@@ -160,7 +192,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = request.headers.get("Origin");
 
     if (origin && !ALLOWED_ORIGINS.has(origin)) {
@@ -171,7 +203,7 @@ export default {
     }
 
     try {
-      return withCors(await route(request, env, new URL(request.url)), origin);
+      return withCors(await route(request, env, new URL(request.url), ctx), origin);
     } catch (err) {
       return withCors(errorResponse(502, "api_error", `Relay error: ${(err as Error).message}`), origin);
     }

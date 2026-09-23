@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reelscout.agent.AgentLoop
 import com.reelscout.agent.Exchange
+import com.reelscout.data.SearchStats
+import com.reelscout.data.StatsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +18,9 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val input: String = "",
     val isLoading: Boolean = false,
-    val statusText: String? = null
+    val statusText: String? = null,
+    // Null until the first load succeeds; the footer stays hidden rather than showing 0.
+    val stats: SearchStats? = null
 )
 
 /**
@@ -24,10 +28,17 @@ data class ChatUiState(
  * UI talks to the agent - everything downstream (tool-use loop, TMDB/Watchmode/Archive.org
  * calls, the Cloudflare relay) is the same shared Kotlin code on every platform.
  */
-class ChatViewModel(private val agentLoop: AgentLoop) : ViewModel() {
+class ChatViewModel(
+    private val agentLoop: AgentLoop,
+    private val statsRepository: StatsRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState
+
+    init {
+        refreshStats()
+    }
 
     fun onInputChange(value: String) {
         _uiState.update { it.copy(input = value) }
@@ -71,6 +82,22 @@ class ChatViewModel(private val agentLoop: AgentLoop) : ViewModel() {
 
             _uiState.update {
                 it.copy(messages = it.messages + reply, isLoading = false, statusText = null)
+            }
+            // The relay has just recorded this search, so the count moves on screen.
+            refreshStats()
+        }
+    }
+
+    // Analytics are a nice-to-have: a failed load keeps whatever was shown before.
+    private fun refreshStats() {
+        viewModelScope.launch {
+            try {
+                val stats = statsRepository.getStats()
+                _uiState.update { it.copy(stats = stats) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Leave the footer as it was.
             }
         }
     }
