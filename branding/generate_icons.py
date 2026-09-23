@@ -1,7 +1,8 @@
 """Generates every platform's app icon from branding/icon-master-1024.png.
 
 The master is the full-bleed square (gradient to the edges, no rounded corners), cropped
-from the designer's 2048px export just inside its pre-rounded corners. Each platform
+from the 2048px artwork created with Dreamina (https://dreamina.capcut.com/ai-tool/home),
+just inside its pre-rounded corners. Each platform
 applies its own mask, or none, so they get different variants:
 
   iOS, Play Store       full-bleed square - the OS / store rounds the corners
@@ -9,6 +10,8 @@ applies its own mask, or none, so they get different variants:
                         extended outward to fill the layer
   macOS / Windows /     macOS-style rounded square with a soft shadow on transparent,
   Linux, web favicon    since desktop OSes and browser tabs don't mask icons
+  Play feature graphic  1024x500 store banner: icon + name + tagline (uses macOS's
+                        Avenir Next font)
 
 Run from the repo root (needs Pillow; macOS's iconutil for the .icns):
     python3 -m venv .venv && .venv/bin/pip install pillow
@@ -20,7 +23,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 MASTER = Image.open(ROOT / "branding/icon-master-1024.png").convert("RGB")
@@ -69,6 +72,34 @@ def rounded(size: int) -> Image.Image:
     return canvas
 
 
+def feature_graphic() -> Image.Image:
+    """Google Play feature graphic: 1024x500, no transparency. The icon on the left, the
+    name and a tagline on the right, over a gradient sampled from the icon's own colors."""
+    width, height = 1024, 500
+    src = MASTER.load()
+    top_left, bottom_right = src[8, 8], src[MASTER.width - 9, MASTER.height - 9]
+    banner = Image.new("RGB", (width, height))
+    px = banner.load()
+    for y in range(height):
+        for x in range(width):
+            t = min(1.0, max(0.0, (x / width) * 0.75 + (y / height) * 0.25))
+            px[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(top_left, bottom_right))
+
+    icon = rounded(1024).resize((340, 340), Image.LANCZOS)
+    banner = banner.convert("RGBA")
+    banner.alpha_composite(icon, (50, (height - 340) // 2))
+
+    avenir = "/System/Library/Fonts/Avenir Next.ttc"
+    title = ImageFont.truetype(avenir, 92, index=0)      # Bold
+    tagline = ImageFont.truetype(avenir, 34, index=5)    # Medium
+    draw = ImageDraw.Draw(banner)
+    x = 420
+    draw.text((x, 150), "Reel Scout", font=title, fill="white")
+    for i, line in enumerate(["Find any movie or show you can", "watch free \u2014 legally."]):
+        draw.text((x + 4, 275 + i * 46), line, font=tagline, fill=(255, 255, 255, 230))
+    return banner.convert("RGB")
+
+
 def write(img: Image.Image, path: str, size: int | None = None) -> None:
     out = ROOT / path
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +118,7 @@ def main() -> None:
 
     # Google Play listing icon (Play rounds the corners itself).
     write(MASTER, "branding/play-store-icon-512.png", 512)
+    write(feature_graphic(), "branding/play-feature-graphic.png")
 
     # Desktop installers.
     icon = rounded(1024)
