@@ -75,94 +75,38 @@ The reliable pattern (and the one Cloudflare's own docs recommend for non-trivia
 - **GitHub Actions secrets** (repo settings → Secrets and variables → Actions): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` — these authenticate the deploy step, nothing else.
 - **Cloudflare Worker secrets** (set once via `wrangler secret put ANTHROPIC_API_KEY`, etc., or the dashboard): `ANTHROPIC_API_KEY`, `TMDB_API_KEY`, `WATCHMODE_API_KEY`. These never touch GitHub at all.
 
-**Two GitHub Actions workflows:**
+**Workflows as built** (`.github/workflows/`):
 
-```yaml
-# .github/workflows/deploy-worker.yml
-name: Deploy Worker
-on:
-  push:
-    branches: [main]
-    paths: ['edge/**']
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: edge
-          command: deploy
-```
+| Workflow | Runs on | Does |
+|---|---|---|
+| `ci.yml` | every PR and push to `main` | Kotlin tests, Android debug build, Wasm build; Worker typecheck + tests |
+| `ios.yml` | PRs/pushes touching iOS inputs (macOS runner) | Builds the iOS app for the simulator via `xcodebuild`, which also builds the Kotlin framework |
+| `deploy-worker.yml` | push to `main` touching `edge/` | Applies D1 migrations, deploys the Worker, smoke-tests `/api/health`, the path allowlist and `/api/stats` |
+| `deploy-web.yml` | push to `main` touching the app | Builds the Wasm bundle, deploys it to Pages, then polls until the live site serves this build's versioned loader |
 
-```yaml
-# .github/workflows/deploy-web.yml
-name: Deploy Web
-on:
-  push:
-    branches: [main]
-    paths: ['composeApp/**', 'shared/**']
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: ./gradlew :composeApp:wasmJsBrowserDistribution
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy composeApp/build/dist/wasmJs/productionExecutable --project-name=reelscout-web
-```
+The deploy workflows are independent, so a Worker-only change doesn't rebuild the Wasm bundle and vice versa.
 
-(Paths/task names are approximate — Kotlin/Wasm output directories have moved before between Kotlin releases, confirm the exact path once the project scaffolds.) Both workflows are independent, so a Worker-only change doesn't rebuild the Wasm bundle and vice versa. Add `pull_request` triggers later for preview deploys once the happy path works.
+## Repo structure
 
-## Repo structure (target state)
-
-```
-reelscout/
-├── androidApp/
-├── composeApp/
-│   ├── src/androidMain/
-│   ├── src/iosMain/
-│   ├── src/desktopMain/
-│   ├── src/wasmJsMain/
-│   └── src/commonMain/
-├── shared/
-│   └── src/commonMain/kotlin/
-│       ├── domain/         # models
-│       ├── data/           # TMDB/Watchmode/Archive repositories, Ktor client
-│       └── agent/          # tool-use loop, tool definitions, Anthropic client
-├── edge/
-│   ├── src/index.ts        # Worker routes
-│   └── wrangler.toml
-├── .github/workflows/
-├── ROADMAP.md
-└── README.md
-```
+See [README.md → Project layout](./README.md#project-layout).
 
 ## Phased roadmap
 
-- **Phase 0 — Scaffold.** KMP wizard project, four targets building "hello world," GitHub repo up, CI running builds (no deploy yet).
-- **Phase 1 — Data layer, no AI.** `shared` repository layer for TMDB/Watchmode, plain search UI in Compose. Already a legitimate multiplatform demo on its own — good first milestone/screenshot.
-- **Phase 2 — Cloudflare relay.** Stand up the `edge` Worker with the four proxy routes, set Worker secrets, deploy manually once via `wrangler deploy` to confirm it works end to end before wiring CI.
-- **Phase 3 — CI/CD.** Add the two GitHub Actions workflows above; confirm a push to `main` actually redeploys the Worker and the web bundle.
-- **Phase 4 — Agent loop.** Implement the tool-use loop in `shared/agent`, wire a chat UI (message list, tool-call indicators like "searching TMDB…" — good for demo video), test against all four proxy routes.
-- **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
-- **Phase 6 — Platform packaging.** Android release build, iOS via Xcode/TestFlight or simulator recording, Desktop packaging (jpackage/Conveyor), confirm Cloudflare Pages URL is stable and linkable.
-- **Phase 7 — Portfolio polish.** README with architecture diagram, per-platform demo GIFs, a "design decisions" section (Ktor-over-SDK, client-side agent loop + dumb relay instead of server-side agent, legal-only data sources), license.
+- ✅ **Phase 0 — Scaffold.** KMP wizard project, four targets building "hello world," GitHub repo up, CI running builds (no deploy yet).
+- ✅ **Phase 1 — Data layer, no AI.** `shared` repository layer for TMDB/Watchmode, plain search UI in Compose. Already a legitimate multiplatform demo on its own — good first milestone/screenshot.
+- ✅ **Phase 2 — Cloudflare relay.** Stand up the `edge` Worker with the four proxy routes, set Worker secrets, deploy manually once via `wrangler deploy` to confirm it works end to end before wiring CI.
+- ✅ **Phase 3 — CI/CD.** Add the two GitHub Actions workflows above; confirm a push to `main` actually redeploys the Worker and the web bundle.
+- ✅ **Phase 4 — Agent loop.** Implement the tool-use loop in `shared/agent`, wire a chat UI (message list, tool-call indicators like "searching TMDB…" — good for demo video), test against all four proxy routes.
+- ✅ **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
+- 🚧 **Phase 6 — Platform packaging.** App icons; signed Android release on Google Play (internal testing) and GitHub Releases; desktop installers (DMG/MSI/DEB) attached to tagged releases. iOS stays a simulator build (built in CI) rather than TestFlight. The Pages URL is live and stable.
+- **Phase 7 — Portfolio polish.** Per-platform demo recordings. (README with architecture diagram, screenshots, design decisions and license: done.)
 
 ## Testing strategy
 
-- `commonTest` with a mocked Ktor engine for TMDB/Watchmode/Archive.org fixtures.
-- Dedicated tests around the agent loop: feed canned Claude tool-call response sequences, assert the right tool executes and the final answer formats correctly. This is the part most likely to get scrutinized — worth the most test coverage.
-- A smoke test for the Worker routes (can be as simple as a `curl`/fetch check in CI post-deploy).
+- **Agent loop** (`AgentLoopTest`): canned Claude response sequences against a Ktor `MockEngine` relay: tool round-trips (thinking blocks echoed unchanged), conversation history and its cap, retry on overload but not on rate limits, refusals, truncated answers, region handling, and which titles an answer covers.
+- **Tools** (`ToolExecutorTest`): each tool against fixture responses, including region filtering, Watchmode de-duplication, library-card splitting and the Archive.org query.
+- **Relay analytics** (`edge/test`, `node:test`): extracting the question, answer, tools and region from Messages API exchanges.
+- **Post-deploy smoke tests** in both deploy workflows against the live hostname.
 
 ## Decisions locked in
 
