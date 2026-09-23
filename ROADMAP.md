@@ -154,7 +154,7 @@ reelscout/
 - **Phase 2 — Cloudflare relay.** Stand up the `edge` Worker with the four proxy routes, set Worker secrets, deploy manually once via `wrangler deploy` to confirm it works end to end before wiring CI.
 - **Phase 3 — CI/CD.** Add the two GitHub Actions workflows above; confirm a push to `main` actually redeploys the Worker and the web bundle.
 - **Phase 4 — Agent loop.** Implement the tool-use loop in `shared/agent`, wire a chat UI (message list, tool-call indicators like "searching TMDB…" — good for demo video), test against all four proxy routes.
-- **Phase 5 — Content polish.** Region selection, free-source filtering rules, SQLDelight-backed watchlist/favorites.
+- **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
 - **Phase 6 — Platform packaging.** Android release build, iOS via Xcode/TestFlight or simulator recording, Desktop packaging (jpackage/Conveyor), confirm Cloudflare Pages URL is stable and linkable.
 - **Phase 7 — Portfolio polish.** README with architecture diagram, per-platform demo GIFs, a "design decisions" section (Ktor-over-SDK, client-side agent loop + dumb relay instead of server-side agent, legal-only data sources), license.
 

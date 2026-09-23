@@ -68,7 +68,7 @@ class AgentLoopTest {
 
         val answer = loop.run("night of the living dead") { toolsCalled += it }
 
-        assertEquals("It's free on Tubi.", answer)
+        assertEquals("It's free on Tubi.", answer.text)
         assertEquals(listOf("search_titles"), toolsCalled)
 
         val secondTurn = claudeRequests[1].messages()
@@ -108,7 +108,7 @@ class AgentLoopTest {
     fun `overloaded responses are retried`() = runTest {
         val loop = agent(error(HttpStatusCode(529, "Overloaded"), "overloaded_error"), reply("end_turn", text("ok")))
 
-        assertEquals("ok", loop.run("hi"))
+        assertEquals("ok", loop.run("hi").text)
         assertEquals(2, claudeRequests.size)
     }
 
@@ -157,8 +157,29 @@ class AgentLoopTest {
     }
 
     @Test
+    fun `the answer lists the titles availability was checked for`() = runTest {
+        val loop = agent(
+            reply("tool_use", searchCall),
+            reply("tool_use", providersCall("""{"tmdbId": 10331, "mediaType": "movie", "region": "GB"}""")),
+            reply("end_turn", text("Free on Tubi."))
+        )
+
+        val answer = loop.run("night of the living dead")
+
+        assertEquals(listOf(10331), answer.titles.map { it.tmdbId })
+        assertEquals("Night of the Living Dead", answer.titles.single().name)
+    }
+
+    @Test
+    fun `titles that were only searched, not checked, aren't offered`() = runTest {
+        val loop = agent(reply("tool_use", searchCall), reply("end_turn", text("Which one did you mean?")))
+
+        assertTrue(loop.run("batman").titles.isEmpty())
+    }
+
+    @Test
     fun `refusals and truncated answers are reported plainly`() = runTest {
-        assertEquals("Sorry, I can't help with that one.", agent(reply("refusal")).run("hi"))
-        assertTrue(agent(reply("max_tokens", text("Partial"))).run("hi").endsWith("_(This answer was cut short.)_"))
+        assertEquals("Sorry, I can't help with that one.", agent(reply("refusal")).run("hi").text)
+        assertTrue(agent(reply("max_tokens", text("Partial"))).run("hi").text.endsWith("_(This answer was cut short.)_"))
     }
 }

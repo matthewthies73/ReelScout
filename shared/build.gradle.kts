@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -41,8 +40,6 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.sqldelight.runtime)
-            implementation(libs.sqldelight.coroutines)
         }
 
         commonTest.dependencies {
@@ -53,30 +50,18 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.sqldelight.android.driver)
         }
 
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
-            implementation(libs.sqldelight.native.driver)
         }
 
         desktopMain.dependencies {
             implementation(libs.ktor.client.cio)
-            implementation(libs.sqldelight.sqlite.driver)
         }
 
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
-            implementation(libs.sqldelight.web.worker.driver)
-        }
-    }
-}
-
-sqldelight {
-    databases {
-        create("ReelScoutDatabase") {
-            packageName.set("com.reelscout.data.db")
         }
     }
 }
