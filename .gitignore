@@ -29,3 +29,13 @@ edge/.wrangler/
 .env
 .env.local
 edge/.dev.vars
+
+# Python venv for branding/generate_icons.py
+.venv/
+
+# Signing keys - never commit. The Android upload key lives in ~/.android-signing/ and CI
+# reads it from the ANDROID_UPLOAD_* repository secrets.
+*.jks
+*.keystore
+*.p12
+keystore.properties

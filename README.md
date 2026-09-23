@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="ReelScout icon" width="96" align="right">
+
 # ReelScout
 
 **An AI agent that finds where to watch any movie or show for free, legally, on Android, iOS,
