@@ -24,6 +24,10 @@ jobs:
       # Smoke test: the custom domain serves the app, not a Pages error page.
       - name: Check the live site
         run: |
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://reelscout.bitterinfantproductions.com/ | grep -q '<title>ReelScout</title>'
-          # reelscout.js must be revalidated, or visitors keep the previous build (see _headers).
-          curl -fsSI https://reelscout.bitterinfantproductions.com/reelscout.js | grep -iq '^cache-control:.*no-cache'
+          page=$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://reelscout.bitterinfantproductions.com/)
+          echo "$page" | grep -q '<title>ReelScout</title>'
+          # The loader must be versioned (composeApp/build.gradle.kts), or browsers keep the
+          # previous build for the zone's 4-hour .js cache. Check it's there and loads.
+          loader=$(echo "$page" | grep -o 'reelscout\.js?v=[0-9a-f]*')
+          test -n "$loader"
+          curl -fsS -o /dev/null "https://reelscout.bitterinfantproductions.com/$loader"

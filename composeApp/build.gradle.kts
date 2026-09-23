@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -85,6 +86,25 @@ kotlin {
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
         }
+    }
+}
+
+// reelscout.js keeps the same name in every build, and the Cloudflare zone lets browsers
+// cache .js for 4 hours, so visitors kept running the previous build after a deploy.
+// index.html (never cached) loads it as reelscout.js?v=<content hash> instead: a new build
+// gets a new URL, and an unchanged one keeps its cache.
+val wasmDistDir = layout.buildDirectory.dir("dist/wasmJs/productionExecutable")
+tasks.named("wasmJsBrowserDistribution") {
+    doLast {
+        val dir = wasmDistDir.get().asFile
+        val version = MessageDigest.getInstance("SHA-256")
+            .digest(dir.resolve("reelscout.js").readBytes())
+            .joinToString("") { "%02x".format(it) }
+            .take(12)
+        val index = dir.resolve("index.html")
+        val html = index.readText()
+        check("src=\"reelscout.js\"" in html) { "index.html no longer loads reelscout.js - update this step" }
+        index.writeText(html.replace("src=\"reelscout.js\"", "src=\"reelscout.js?v=$version\""))
     }
 }
 
