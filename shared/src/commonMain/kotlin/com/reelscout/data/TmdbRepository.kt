@@ -61,6 +61,7 @@ class TmdbRepository(private val client: HttpClient) {
         return response.cast
             .filter { it.mediaType == "movie" || it.mediaType == "tv" }
             .filter { credit -> credit.genreIds.none { it in NON_ACTING_GENRES } }
+            .filterNot { isArchiveFootage(it.character) }
             // An actor can be credited twice on one title (two characters); keep the first.
             .distinctBy { it.mediaType to it.id }
             .sortedByDescending { it.popularity }
@@ -70,7 +71,7 @@ class TmdbRepository(private val client: HttpClient) {
     internal suspend fun movieCast(movieId: Int): List<TmdbMovieCastMember> {
         val response: TmdbMovieCredits =
             client.get("${EdgeApiConfig.baseUrl}/api/tmdb/movie/$movieId/credits").bodyOrThrow()
-        return response.cast.distinctBy { it.id }.sortedByDescending { it.popularity }
+        return response.cast.filterNot { isArchiveFootage(it.character) }.distinctBy { it.id }.sortedByDescending { it.popularity }
     }
 
     // A rate-limited or failed lookup would otherwise decode as an empty cast list, which
@@ -83,6 +84,10 @@ class TmdbRepository(private val client: HttpClient) {
     private companion object {
         // TMDB TV genre ids: News, Reality, Talk.
         val NON_ACTING_GENRES = setOf(10763, 10764, 10767)
+
+        // Old clips reused in a later film, e.g. Elvis as "Self (archive footage)" in Forrest
+        // Gump. Not a role, so not a credit, and not a Kevin Bacon link.
+        fun isArchiveFootage(character: String?) = character?.contains("archive footage", ignoreCase = true) == true
     }
 }
 

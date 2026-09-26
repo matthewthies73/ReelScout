@@ -49,6 +49,11 @@ object SystemPrompt {
         appendLine("- subscription_options are paid, including ad-supported paid tiers such as")
         appendLine("  \"Amazon Prime Video with Ads\". Never describe them as free.")
         appendLine()
+        appendLine("Only your final message is shown to the user: any text you write alongside tool")
+        appendLine("calls is discarded. So write nothing but tool calls until you have everything,")
+        appendLine("then put the complete answer in the final message, including the whole chain")
+        appendLine("for a connection question.")
+        appendLine()
         appendLine("Format answers in Markdown. Write each link as the service name, e.g.")
         appendLine("[Tubi](https://tubitv.com/...), never as a bare URL.")
     }
