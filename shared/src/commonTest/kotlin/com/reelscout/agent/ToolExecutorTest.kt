@@ -199,6 +199,7 @@ class ToolExecutorTest {
               {"id": 2, "title": "Big Film", "media_type": "movie", "character": "Hero", "release_date": "2010-07-16", "popularity": 90.0},
               {"id": 2, "title": "Big Film", "media_type": "movie", "character": "Hero (voice)", "popularity": 90.0},
               {"id": 3, "name": "Late Night Talk", "media_type": "tv", "character": "Self", "popularity": 50.0, "genre_ids": [10767]},
+              {"id": 4, "title": "Clip Show Film", "media_type": "movie", "character": "Self (archive footage) (uncredited)", "popularity": 80.0},
               {"id": 2, "name": "A Show", "media_type": "tv", "character": "", "first_air_date": "2015-01-01", "popularity": 10.0, "genre_ids": [18]}
             ]}
         """.trimIndent()

@@ -84,6 +84,13 @@ class ConnectionFinderTest {
     }
 
     @Test
+    fun `archive footage doesn't count as a link`() = runTest {
+        val forrestGump = Film(40, "Forrest Gump", 1994, listOf(elvis.copy(character = "Self (archive footage) (uncredited)"), bacon))
+
+        assertNull(finder(listOf(forrestGump)).find(1, "Elvis Presley", 3, "Kevin Bacon"))
+    }
+
+    @Test
     fun `the search stops at its call budget`() = runTest {
         // A long chain of films, each sharing one person with the next.
         val films = (1..30).map { i -> Film(100 + i, "Film $i", 2000, listOf(Role(i, "P$i", "A"), Role(i + 1, "P${i + 1}", "B"))) }
