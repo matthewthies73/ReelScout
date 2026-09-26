@@ -13,7 +13,7 @@ Both should be visible at a glance in the README: architecture diagram, a demo G
 
 User asks something like *"sci-fi movies like Interstellar that I can watch for free right now"*. The agent:
 
-- resolves candidate titles via TMDB search,
+- resolves candidate titles via TMDB search (or, for a question about an actor, finds the person and pulls their acting credits),
 - checks where each is streaming via TMDB `watch/providers` (which is itself backed by JustWatch licensing data) and Watchmode as a cross-check, filtered to ad-supported/free flags,
 - falls back to Archive.org's public-domain film collection for older titles not covered by modern catalogs,
 - returns a grounded, cited answer — never answering from the model's own memory of "what's on Netflix," since that goes stale immediately.
@@ -24,7 +24,7 @@ Region defaults to **US** (both for TMDB/Watchmode provider lookups and for whic
 
 | Source | Use | Notes |
 |---|---|---|
-| TMDB API | title search, metadata, `watch/providers` | free API key, well documented, effectively includes JustWatch's provider data |
+| TMDB API | title and people search, actor credits, metadata, `watch/providers` | free API key, well documented, effectively includes JustWatch's provider data |
 | Watchmode API | cross-check + explicit free/ad-supported flags | free tier available |
 | Archive.org advancedsearch API | true public-domain titles | no auth needed |
 
@@ -97,14 +97,14 @@ See [README.md → Project layout](./README.md#project-layout).
 - ✅ **Phase 2 — Cloudflare relay.** Stand up the `edge` Worker with the four proxy routes, set Worker secrets, deploy manually once via `wrangler deploy` to confirm it works end to end before wiring CI.
 - ✅ **Phase 3 — CI/CD.** Add the two GitHub Actions workflows above; confirm a push to `main` actually redeploys the Worker and the web bundle.
 - ✅ **Phase 4 — Agent loop.** Implement the tool-use loop in `shared/agent`, wire a chat UI (message list, tool-call indicators like "searching TMDB…" — good for demo video), test against all four proxy routes.
-- ✅ **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
+- ✅ **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites, actor lookup (`search_people` → `get_person_credits` → the usual availability checks; credits are cast-only, most popular first, capped at 25, with talk/news/reality appearances dropped). (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
 - 🚧 **Phase 6 — Platform packaging.** App icons; signed Android release on Google Play (internal testing) and GitHub Releases; desktop installers (DMG/MSI/DEB) attached to tagged releases. iOS stays a simulator build (built in CI) rather than TestFlight. The Pages URL is live and stable.
 - **Phase 7 — Portfolio polish.** Per-platform demo recordings. (README with architecture diagram, screenshots, design decisions and license: done.)
 
 ## Testing strategy
 
 - **Agent loop** (`AgentLoopTest`): canned Claude response sequences against a Ktor `MockEngine` relay: tool round-trips (thinking blocks echoed unchanged), conversation history and its cap, retry on overload but not on rate limits, refusals, truncated answers, region handling, and which titles an answer covers.
-- **Tools** (`ToolExecutorTest`): each tool against fixture responses, including region filtering, Watchmode de-duplication, library-card splitting and the Archive.org query.
+- **Tools** (`ToolExecutorTest`): each tool against fixture responses, including region filtering, Watchmode de-duplication, library-card splitting, the Archive.org query, and actor credit filtering (talk shows dropped, one entry per title, popularity order, cap).
 - **Relay analytics** (`edge/test`, `node:test`): extracting the question, answer, tools and region from Messages API exchanges.
 - **Post-deploy smoke tests** in both deploy workflows against the live hostname.
 

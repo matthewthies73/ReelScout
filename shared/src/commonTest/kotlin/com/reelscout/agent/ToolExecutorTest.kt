@@ -5,6 +5,9 @@ import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.commonJson
 import com.reelscout.data.installEdgeDefaults
+import com.reelscout.domain.Credit
+import com.reelscout.domain.MediaType
+import com.reelscout.domain.Person
 import com.reelscout.domain.PublicDomainFilm
 import com.reelscout.domain.RegionAvailability
 import com.reelscout.domain.Title
@@ -168,5 +171,61 @@ class ToolExecutorTest {
 
         assertEquals(8, titles.size)
         assertTrue(titles.all { it.overview.length == 200 })
+    }
+
+    @Test
+    fun `search_people returns a few candidates with what they're known for`() = runTest {
+        val people = (1..8).joinToString(",") {
+            """{"id": $it, "name": "Chris Evans", "known_for_department": "Acting", "known_for": [
+              {"id": 100, "title": "Captain America", "media_type": "movie"},
+              {"id": 200, "name": "Some Show", "media_type": "tv"}
+            ]}"""
+        }
+        val tools = executor("/api/tmdb/search/person" to (HttpStatusCode.OK to """{"results": [$people]}"""))
+
+        val result = tools.execute("search_people", input("""{"query": "chris evans"}"""))
+        val found = commonJson.decodeFromString(ListSerializer(Person.serializer()), result)
+
+        assertEquals("chris evans", requests.single().url.parameters["query"])
+        assertEquals(5, found.size)
+        assertEquals(Person(1, "Chris Evans", "Acting", listOf("Captain America", "Some Show")), found.first())
+    }
+
+    @Test
+    fun `get_person_credits keeps real roles, most popular first, once each`() = runTest {
+        val cast = """
+            {"cast": [
+              {"id": 1, "title": "Minor Film", "media_type": "movie", "character": "Cop", "release_date": "2001-05-01", "popularity": 2.0},
+              {"id": 2, "title": "Big Film", "media_type": "movie", "character": "Hero", "release_date": "2010-07-16", "popularity": 90.0},
+              {"id": 2, "title": "Big Film", "media_type": "movie", "character": "Hero (voice)", "popularity": 90.0},
+              {"id": 3, "name": "Late Night Talk", "media_type": "tv", "character": "Self", "popularity": 50.0, "genre_ids": [10767]},
+              {"id": 2, "name": "A Show", "media_type": "tv", "character": "", "first_air_date": "2015-01-01", "popularity": 10.0, "genre_ids": [18]}
+            ]}
+        """.trimIndent()
+        val tools = executor("/api/tmdb/person/31/combined_credits" to (HttpStatusCode.OK to cast))
+
+        val result = tools.execute("get_person_credits", input("""{"personId": 31}"""))
+        val credits = commonJson.decodeFromString(ListSerializer(Credit.serializer()), result)
+
+        assertEquals(
+            listOf(
+                Credit(2, "Big Film", MediaType.MOVIE, 2010, "Hero", null),
+                Credit(2, "A Show", MediaType.TV, 2015, null, null),
+                Credit(1, "Minor Film", MediaType.MOVIE, 2001, "Cop", null)
+            ),
+            credits
+        )
+    }
+
+    @Test
+    fun `get_person_credits caps a long filmography`() = runTest {
+        val cast = (1..40).joinToString(",") { """{"id": $it, "title": "Film $it", "media_type": "movie", "popularity": $it}""" }
+        val tools = executor("/api/tmdb/person/31/combined_credits" to (HttpStatusCode.OK to """{"cast": [$cast]}"""))
+
+        val result = tools.execute("get_person_credits", input("""{"personId": 31}"""))
+        val credits = commonJson.decodeFromString(ListSerializer(Credit.serializer()), result)
+
+        assertEquals(25, credits.size)
+        assertEquals("Film 40", credits.first().name)
     }
 }

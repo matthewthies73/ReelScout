@@ -1,6 +1,8 @@
 package com.reelscout.data
 
+import com.reelscout.domain.Credit
 import com.reelscout.domain.MediaType
+import com.reelscout.domain.Person
 import com.reelscout.domain.RegionAvailability
 import com.reelscout.domain.Title
 import com.reelscout.domain.WatchOption
@@ -35,6 +37,79 @@ class TmdbRepository(private val client: HttpClient) {
         // TMDB returns every country at once (~150 KB); only the requested one goes to Claude.
         return response.results[region.uppercase()].toAvailability(region.uppercase())
     }
+
+    suspend fun searchPeople(query: String): List<Person> {
+        val response: TmdbPersonSearchResponse = client.get("${EdgeApiConfig.baseUrl}/api/tmdb/search/person") {
+            parameter("query", query)
+        }.body()
+        return response.results.map { it.toDomain() }
+    }
+
+    /**
+     * A person's acting credits, most popular first. Talk, news and reality shows are dropped:
+     * they're guest appearances as themselves, and would crowd out the actual roles.
+     */
+    suspend fun getPersonCredits(personId: Int): List<Credit> {
+        val response: TmdbCombinedCredits =
+            client.get("${EdgeApiConfig.baseUrl}/api/tmdb/person/$personId/combined_credits").body()
+
+        return response.cast
+            .filter { it.mediaType == "movie" || it.mediaType == "tv" }
+            .filter { credit -> credit.genreIds.none { it in NON_ACTING_GENRES } }
+            // An actor can be credited twice on one title (two characters); keep the first.
+            .distinctBy { it.mediaType to it.id }
+            .sortedByDescending { it.popularity }
+            .map { it.toDomain() }
+    }
+
+    private companion object {
+        // TMDB TV genre ids: News, Reality, Talk.
+        val NON_ACTING_GENRES = setOf(10763, 10764, 10767)
+    }
+}
+
+@Serializable
+data class TmdbPersonSearchResponse(val results: List<TmdbPersonResult>)
+
+@Serializable
+data class TmdbPersonResult(
+    val id: Int,
+    val name: String,
+    val knownForDepartment: String? = null,
+    val knownFor: List<TmdbSearchResult> = emptyList()
+) {
+    fun toDomain(): Person = Person(
+        tmdbId = id,
+        name = name,
+        knownForDepartment = knownForDepartment,
+        knownFor = knownFor.mapNotNull { it.title ?: it.name }
+    )
+}
+
+@Serializable
+data class TmdbCombinedCredits(val cast: List<TmdbCastCredit> = emptyList())
+
+@Serializable
+data class TmdbCastCredit(
+    val id: Int,
+    val title: String? = null,       // movies
+    val name: String? = null,        // tv
+    val mediaType: String? = null,
+    val character: String? = null,
+    val releaseDate: String? = null,
+    val firstAirDate: String? = null,
+    val posterPath: String? = null,
+    val popularity: Double = 0.0,
+    val genreIds: List<Int> = emptyList()
+) {
+    fun toDomain(): Credit = Credit(
+        tmdbId = id,
+        name = title ?: name ?: "Unknown title",
+        mediaType = if (mediaType == "tv") MediaType.TV else MediaType.MOVIE,
+        releaseYear = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull(),
+        character = character?.takeIf { it.isNotBlank() },
+        posterPath = posterPath
+    )
 }
 
 @Serializable
