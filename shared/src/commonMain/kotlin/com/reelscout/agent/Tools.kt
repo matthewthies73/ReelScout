@@ -98,5 +98,27 @@ object Tools {
         }
     )
 
-    val all = listOf(searchTitles, getWatchProviders, getWatchmodeSources, searchPublicDomain, searchPeople, getPersonCredits)
+    val findConnection = ToolDefinition(
+        name = "find_connection",
+        description = "Six Degrees of Kevin Bacon: find a chain of films linking two people (by TMDB " +
+            "person id), where each link is a film both people acted in. Returns the number of " +
+            "degrees and each link with the characters played, or connected: false if no chain " +
+            "turned up. Searches the most popular films and co-stars, so the chain is short but " +
+            "not guaranteed to be the shortest.",
+        inputSchema = buildJsonObject {
+            put("type", "object")
+            putJsonObject("properties") {
+                putJsonObject("fromPersonId") { put("type", "integer") }
+                putJsonObject("fromName") { put("type", "string") }
+                putJsonObject("toPersonId") { put("type", "integer") }
+                putJsonObject("toName") { put("type", "string") }
+            }
+            putJsonArray("required") { add("fromPersonId"); add("fromName"); add("toPersonId"); add("toName") }
+        }
+    )
+
+    val all = listOf(
+        searchTitles, getWatchProviders, getWatchmodeSources, searchPublicDomain,
+        searchPeople, getPersonCredits, findConnection
+    )
 }

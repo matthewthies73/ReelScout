@@ -70,6 +70,22 @@ data class Credit(
     fun toTitle(): Title = Title(tmdbId, name, mediaType, overview = "", releaseYear, posterPath)
 }
 
+/**
+ * How two people are linked through films they appeared in, Six Degrees of Kevin Bacon
+ * style: each link is one film that [ConnectionLink.from] and [ConnectionLink.to] were both in.
+ */
+@Serializable
+data class Connection(val degrees: Int, val links: List<ConnectionLink>)
+
+@Serializable
+data class ConnectionLink(
+    val from: String,
+    val fromCharacter: String?,
+    val movie: Title,
+    val to: String,
+    val toCharacter: String?
+)
+
 /** One place to watch a title. `adSupported` is null when the source doesn't say. */
 @Serializable
 data class WatchOption(

@@ -40,8 +40,11 @@ the day it's written.
   and paid tiers are reported separately, never mixed together.
 - **Actor lookup.** Ask by actor and the agent pulls their acting credits from TMDB, picks
   the titles that fit, and checks where each one is free, naming the character they played.
+- **Six Degrees of Kevin Bacon.** Ask how two actors are connected and a search in shared
+  Kotlin walks TMDB's film casts from both ends to find a chain of films linking them,
+  then checks where those films are free.
 - **15 countries**, follow-up questions ("what about the 1990 remake?"), saved titles,
-  and a live search counter with the week's most-asked questions.
+  dark mode, and a live search counter with the week's most-asked questions.
 - **Production-shaped.** A locked-down edge relay, CI on every PR (including an iOS build),
   and automated deploys with post-deploy smoke tests.
 
@@ -70,11 +73,11 @@ flowchart LR
     pages["Cloudflare Pages<br/>Wasm build"] -. serves .-> ui
 ```
 
-1. The app sends the question, conversation history and six tool definitions to Claude,
+1. The app sends the question, conversation history and seven tool definitions to Claude,
    through the relay.
 2. Claude asks for tools. `AgentLoop` runs them against the live APIs (`search_titles`,
-   `search_people`, `get_person_credits`, `get_watch_providers`, `get_watchmode_sources`,
-   `search_public_domain`) and sends back
+   `search_people`, `get_person_credits`, `find_connection`, `get_watch_providers`,
+   `get_watchmode_sources`, `search_public_domain`) and sends back
    the results, trimmed to what matters.
 3. This repeats until Claude has enough to answer. The answer is rendered as Markdown with
    named links, and the titles it covered can be saved.
@@ -93,6 +96,7 @@ reasoning happens in the app.
 | **Free vs. library card vs. paid, decided in code** | Both data sources list library services as "free". A deterministic rule splits them out, rather than trusting the prompt. |
 | **Analytics recorded by the relay** | Every answered question (question, answer, tools used, country) goes to D1 with no IP or user id. Clients can't inflate the counts. The public "popular" list only shows short, repeated questions. |
 | **Versioned web loader** | Kotlin/Wasm's loader keeps one filename across builds, and the CDN cached it for 4 hours. `index.html` loads it as `reelscout.js?v=<content hash>`, so every deploy reaches visitors immediately. |
+| **Actor connections searched in code, not by Claude** | Finding a link between two actors can take dozens of TMDB lookups. A two-ended search in Kotlin does them within a fixed limit of 40 calls, expanding only the most popular films and co-stars, instead of spending Claude turns and tokens on each step. |
 | **Settings store over a database for favorites** | A short list of saved titles doesn't need SQL, and SQLDelight on Wasm would mean async queries and a web-worker SQLite. |
 
 ## Tech stack
@@ -168,7 +172,7 @@ account. Only the total count and the week's most-asked short questions are publ
 | Phase | |
 |---|---|
 | 0–4 · Scaffold, data layer, relay, CI/CD, agent loop | ✅ Done |
-| 5 · Region picker, free-source rules, favorites, actor lookup | ✅ Done |
+| 5 · Region picker, free-source rules, favorites, actor lookup, actor connections, dark mode | ✅ Done |
 | 6 · Packaging: Android release (Google Play + GitHub Releases), desktop installers | 🚧 In progress |
 | 7 · Portfolio polish: demo videos per platform | Planned |
 

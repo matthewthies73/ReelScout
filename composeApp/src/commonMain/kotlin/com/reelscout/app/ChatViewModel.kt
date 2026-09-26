@@ -31,7 +31,8 @@ data class ChatUiState(
     val stats: SearchStats? = null,
     val region: Region = Region.DEFAULT,
     val favorites: List<Title> = emptyList(),
-    val showFavorites: Boolean = false
+    val showFavorites: Boolean = false,
+    val darkMode: Boolean = false
 )
 
 /**
@@ -43,11 +44,12 @@ class ChatViewModel(
     private val agentLoop: AgentLoop,
     private val statsRepository: StatsRepository,
     private val regionStore: RegionStore,
-    private val favoritesStore: FavoritesStore
+    private val favoritesStore: FavoritesStore,
+    private val themeStore: ThemeStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        ChatUiState(region = regionStore.load(), favorites = favoritesStore.load())
+        ChatUiState(region = regionStore.load(), favorites = favoritesStore.load(), darkMode = themeStore.load())
     )
     val uiState: StateFlow<ChatUiState> = _uiState
 
@@ -67,7 +69,9 @@ class ChatViewModel(
 
     fun newChat() {
         if (!_uiState.value.isLoading) {
-            _uiState.update { ChatUiState(stats = it.stats, region = it.region, favorites = it.favorites) }
+            _uiState.update {
+                ChatUiState(stats = it.stats, region = it.region, favorites = it.favorites, darkMode = it.darkMode)
+            }
         }
     }
 
@@ -95,6 +99,11 @@ class ChatViewModel(
     fun setRegion(region: Region) {
         regionStore.save(region)
         _uiState.update { it.copy(region = region) }
+    }
+
+    fun setDarkMode(darkMode: Boolean) {
+        themeStore.save(darkMode)
+        _uiState.update { it.copy(darkMode = darkMode) }
     }
 
     fun send() {
@@ -154,6 +163,7 @@ class ChatViewModel(
         "search_public_domain" -> "Searching Archive.org's public-domain films…"
         "search_people" -> "Looking up the actor on TMDB…"
         "get_person_credits" -> "Going through their movies and shows…"
+        "find_connection" -> "Tracing the links between them…"
         else -> "Working…"
     }
 

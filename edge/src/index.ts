@@ -42,6 +42,7 @@ const ALLOWED_ORIGINS = new Set([
 const TMDB_PATHS = [
   /^search\/(multi|person)$/,
   /^(movie|tv)\/\d+\/watch\/providers$/,
+  /^movie\/\d+\/credits$/,
   /^person\/\d+\/combined_credits$/,
 ];
 const WATCHMODE_PATHS = [/^search\/?$/, /^title\/[\w-]+\/sources\/?$/];

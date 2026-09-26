@@ -10,6 +10,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
 
 /**
@@ -49,9 +51,12 @@ class TmdbRepository(private val client: HttpClient) {
      * A person's acting credits, most popular first. Talk, news and reality shows are dropped:
      * they're guest appearances as themselves, and would crowd out the actual roles.
      */
-    suspend fun getPersonCredits(personId: Int): List<Credit> {
+    suspend fun getPersonCredits(personId: Int): List<Credit> = actingCredits(personId).map { it.toDomain() }
+
+    /** [getPersonCredits] before it's trimmed for Claude: ConnectionFinder needs the popularity. */
+    internal suspend fun actingCredits(personId: Int): List<TmdbCastCredit> {
         val response: TmdbCombinedCredits =
-            client.get("${EdgeApiConfig.baseUrl}/api/tmdb/person/$personId/combined_credits").body()
+            client.get("${EdgeApiConfig.baseUrl}/api/tmdb/person/$personId/combined_credits").bodyOrThrow()
 
         return response.cast
             .filter { it.mediaType == "movie" || it.mediaType == "tv" }
@@ -59,7 +64,20 @@ class TmdbRepository(private val client: HttpClient) {
             // An actor can be credited twice on one title (two characters); keep the first.
             .distinctBy { it.mediaType to it.id }
             .sortedByDescending { it.popularity }
-            .map { it.toDomain() }
+    }
+
+    /** A movie's cast, most popular first. */
+    internal suspend fun movieCast(movieId: Int): List<TmdbMovieCastMember> {
+        val response: TmdbMovieCredits =
+            client.get("${EdgeApiConfig.baseUrl}/api/tmdb/movie/$movieId/credits").bodyOrThrow()
+        return response.cast.distinctBy { it.id }.sortedByDescending { it.popularity }
+    }
+
+    // A rate-limited or failed lookup would otherwise decode as an empty cast list, which
+    // reads as "no credits" rather than as an error.
+    private suspend inline fun <reified T> HttpResponse.bodyOrThrow(): T {
+        if (!status.isSuccess()) throw IllegalStateException("TMDB lookup failed (HTTP ${status.value})")
+        return body()
     }
 
     private companion object {
@@ -102,11 +120,14 @@ data class TmdbCastCredit(
     val popularity: Double = 0.0,
     val genreIds: List<Int> = emptyList()
 ) {
+    // Movie year, falling back to a show's first-air year.
+    val year: Int? get() = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
+
     fun toDomain(): Credit = Credit(
         tmdbId = id,
         name = title ?: name ?: "Unknown title",
         mediaType = if (mediaType == "tv") MediaType.TV else MediaType.MOVIE,
-        releaseYear = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull(),
+        releaseYear = year,
         character = character?.takeIf { it.isNotBlank() },
         posterPath = posterPath
     )
@@ -167,4 +188,15 @@ internal fun TmdbRegionProviders?.toAvailability(region: String): RegionAvailabi
 data class TmdbProvider(
     val providerName: String,
     val logoPath: String? = null
+)
+
+@Serializable
+data class TmdbMovieCredits(val cast: List<TmdbMovieCastMember> = emptyList())
+
+@Serializable
+data class TmdbMovieCastMember(
+    val id: Int,
+    val name: String,
+    val character: String? = null,
+    val popularity: Double = 0.0
 )

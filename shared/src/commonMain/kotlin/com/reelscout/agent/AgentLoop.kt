@@ -1,6 +1,7 @@
 package com.reelscout.agent
 
 import com.reelscout.data.commonJson
+import com.reelscout.domain.Connection
 import com.reelscout.domain.Credit
 import com.reelscout.domain.Region
 import com.reelscout.domain.Title
@@ -101,6 +102,8 @@ class AgentLoop(
                 .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it } }
             "get_person_credits" -> runCatching { commonJson.decodeFromString(ListSerializer(Credit.serializer()), result) }
                 .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it.toTitle() } }
+            "find_connection" -> runCatching { commonJson.decodeFromString(Connection.serializer(), result) }
+                .getOrNull()?.links?.forEach { found.getOrPut(it.movie.tmdbId) { it.movie } }
             "get_watch_providers", "get_watchmode_sources" ->
                 runCatching { toolUse.input.jsonObject["tmdbId"]?.jsonPrimitive?.int }.getOrNull()?.let { checked += it }
         }

@@ -1,9 +1,11 @@
 package com.reelscout.agent
 
 import com.reelscout.data.ArchiveOrgRepository
+import com.reelscout.data.ConnectionFinder
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.commonJson
+import com.reelscout.domain.Connection
 import com.reelscout.domain.Credit
 import com.reelscout.domain.MediaType
 import com.reelscout.domain.Person
@@ -57,6 +59,18 @@ class ToolExecutor(
             val personId = input.jsonObject["personId"]?.jsonPrimitive?.int ?: error("personId is required")
             // Prolific actors have hundreds of credits; the most popular are what people ask about.
             commonJson.encodeToString(ListSerializer(Credit.serializer()), tmdb.getPersonCredits(personId).take(MAX_CREDITS))
+        }
+
+        "find_connection" -> {
+            val obj = input.jsonObject
+            val connection = ConnectionFinder(tmdb).find(
+                fromPersonId = obj["fromPersonId"]?.jsonPrimitive?.int ?: error("fromPersonId is required"),
+                fromName = obj["fromName"]?.jsonPrimitive?.content.orEmpty(),
+                toPersonId = obj["toPersonId"]?.jsonPrimitive?.int ?: error("toPersonId is required"),
+                toName = obj["toName"]?.jsonPrimitive?.content.orEmpty()
+            )
+            connection?.let { commonJson.encodeToString(Connection.serializer(), it) }
+                ?: """{"connected":false,"note":"No chain found among the most popular films and co-stars searched."}"""
         }
 
         else -> """{"error":"unknown tool: $name"}"""
