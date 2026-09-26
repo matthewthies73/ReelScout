@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -44,10 +45,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,12 +62,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.reelscout.data.SearchStats
 import com.reelscout.domain.MediaType
@@ -78,7 +87,8 @@ private val MaxContentWidth = 760.dp
 private val ExampleQuestions = listOf(
     "Night of the Living Dead",
     "Sci-fi movies like Interstellar I can watch free",
-    "Is His Girl Friday in the public domain?"
+    "Tom Hanks movies I can stream free",
+    "How is Elvis connected to Kevin Bacon?"
 )
 
 /**
@@ -87,10 +97,10 @@ private val ExampleQuestions = listOf(
  */
 @Composable
 fun App() {
-    MaterialTheme {
-        val viewModel: ChatViewModel = koinViewModel()
-        val state by viewModel.uiState.collectAsState()
+    val viewModel: ChatViewModel = koinViewModel()
+    val state by viewModel.uiState.collectAsState()
 
+    MaterialTheme(colorScheme = if (state.darkMode) darkColorScheme() else lightColorScheme()) {
         ChatScreen(
             state = state,
             onInputChange = viewModel::onInputChange,
@@ -100,7 +110,8 @@ fun App() {
             onRegionChange = viewModel::setRegion,
             onToggleFavorite = viewModel::toggleFavorite,
             onShowFavorites = viewModel::showFavorites,
-            onAskAbout = viewModel::askAbout
+            onAskAbout = viewModel::askAbout,
+            onDarkModeChange = viewModel::setDarkMode
         )
     }
 }
@@ -117,7 +128,8 @@ internal fun ChatScreen(
     onRegionChange: (Region) -> Unit,
     onToggleFavorite: (Title) -> Unit = {},
     onShowFavorites: (Boolean) -> Unit = {},
-    onAskAbout: (Title) -> Unit = {}
+    onAskAbout: (Title) -> Unit = {},
+    onDarkModeChange: (Boolean) -> Unit = {}
 ) {
     if (state.showFavorites) {
         FavoritesDialog(
@@ -133,9 +145,14 @@ internal fun ChatScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Reel Scout") },
+                // Taller than the default 64dp to fit the dark mode switch under Saved.
+                expandedHeight = 88.dp,
                 navigationIcon = {
-                    TextButton(onClick = { onShowFavorites(true) }) {
-                        Text(if (state.favorites.isEmpty()) "Saved" else "Saved (${state.favorites.size})")
+                    Column {
+                        TextButton(onClick = { onShowFavorites(true) }) {
+                            Text(if (state.favorites.isEmpty()) "Saved" else "Saved (${state.favorites.size})")
+                        }
+                        DarkModeSwitch(state.darkMode, onDarkModeChange)
                     }
                 },
                 actions = { RegionPicker(state.region, onRegionChange) }
@@ -177,6 +194,21 @@ internal fun ChatScreen(
     }
 }
 
+/** Switches between the original light theme and dark mode. */
+@Composable
+private fun DarkModeSwitch(darkMode: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 12.dp).toggleable(value = darkMode, role = Role.Switch, onValueChange = onChange)
+    ) {
+        Text("Dark mode", style = MaterialTheme.typography.labelMedium)
+        // The row handles the tap, so the switch doesn't need its own 48dp touch target.
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Switch(checked = darkMode, onCheckedChange = null, modifier = Modifier.padding(start = 8.dp).scale(0.7f))
+        }
+    }
+}
+
 /** Country for availability lookups; applies from the next question. */
 @Composable
 private fun RegionPicker(region: Region, onRegionChange: (Region) -> Unit) {
@@ -213,7 +245,7 @@ private fun EmptyState(region: Region, onExampleClick: (String) -> Unit, enabled
         ) {
             Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(
-                "Ask about any movie or show. Reel Scout checks live streaming data and public-domain " +
+                "Ask about any movie, show or actor. Reel Scout checks live streaming data and public-domain " +
                     "archives for free, legal ways to watch it in ${region.inSentence}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -262,7 +294,7 @@ private fun ChatInput(
                         onValueChange = onInputChange,
                         enabled = !isLoading,
                         singleLine = true,
-                        placeholder = { Text("Ask about a movie or show…") },
+                        placeholder = { Text("Ask about a movie, show or actor…") },
                         // A single-line field runs its IME action on Enter too, so this covers
                         // the Send key on phone keyboards and Enter on desktop and web.
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),

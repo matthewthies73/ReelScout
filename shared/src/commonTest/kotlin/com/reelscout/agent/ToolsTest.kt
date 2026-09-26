@@ -13,15 +13,16 @@ import kotlin.test.assertTrue
 class ToolsTest {
 
     @Test
-    fun `all six tools are registered with unique names`() {
+    fun `all seven tools are registered with unique names`() {
         val names = Tools.all.map { it.name }
-        assertEquals(6, names.toSet().size, "tool names must be unique")
+        assertEquals(7, names.toSet().size, "tool names must be unique")
         assertTrue("search_titles" in names)
         assertTrue("get_watch_providers" in names)
         assertTrue("get_watchmode_sources" in names)
         assertTrue("search_public_domain" in names)
         assertTrue("search_people" in names)
         assertTrue("get_person_credits" in names)
+        assertTrue("find_connection" in names)
     }
 
     @Test
