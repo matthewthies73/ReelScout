@@ -13,12 +13,12 @@ desktop and the web, from one Kotlin codebase.**
 [![Deploy Worker](https://github.com/matthewthies73/ReelScout/actions/workflows/deploy-worker.yml/badge.svg)](https://github.com/matthewthies73/ReelScout/actions/workflows/deploy-worker.yml)
 
 <p>
-  <img src="docs/screenshots/web-answer.png" alt="ReelScout on the web, answering 'Night of the Living Dead' with free streaming links" width="100%">
+  <img src="docs/screenshots/desktop-answer.png" alt="ReelScout on desktop in dark mode, linking Elvis Presley to Kevin Bacon in two degrees and checking where the connecting films are free" width="100%">
 </p>
 <p>
-  <img src="docs/screenshots/android-answer.png" alt="ReelScout on Android" width="32%">
+  <img src="docs/screenshots/android-answer.png" alt="ReelScout on Android, listing Tom Hanks movies and where each one streams free" width="32%">
   &nbsp;
-  <img src="docs/screenshots/android-saved.png" alt="Saved titles on Android" width="32%">
+  <img src="docs/screenshots/android-saved.png" alt="Saved titles on Android in dark mode" width="32%">
 </p>
 
 Ask about a title, *"Night of the Living Dead"* or *"sci-fi like Interstellar I can watch free"*,

@@ -3,6 +3,7 @@ package com.reelscout.app
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -79,7 +79,10 @@ import com.reelscout.domain.Title
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.rememberMarkdownState
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import reelscout.composeapp.generated.resources.Res
+import reelscout.composeapp.generated.resources.logo
 
 // Keeps lines readable on desktop and web instead of stretching across a wide window.
 private val MaxContentWidth = 760.dp
@@ -243,6 +246,11 @@ private fun EmptyState(region: Region, onExampleClick: (String) -> Unit, enabled
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Image(
+                painter = painterResource(Res.drawable.logo),
+                contentDescription = "Reel Scout logo",
+                modifier = Modifier.size(96.dp).padding(bottom = 16.dp)
+            )
             Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(
                 "Ask about any movie, show or actor. Reel Scout checks live streaming data and public-domain " +
@@ -276,7 +284,7 @@ private fun ChatInput(
             Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
             contentAlignment = Alignment.Center
         ) {
-            Column(Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)) {
                 if (statusText != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -316,6 +324,7 @@ private fun ChatInput(
 }
 
 /** Global search count plus the week's most-asked questions (edge/src/analytics.ts). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchFooter(stats: SearchStats, enabled: Boolean, onAsk: (String) -> Unit) {
     Column(Modifier.padding(top = 8.dp)) {
@@ -325,14 +334,15 @@ private fun SearchFooter(stats: SearchStats, enabled: Boolean, onAsk: (String) -
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (stats.topSearches.isNotEmpty()) {
-            LazyRow(
+            // Wraps rather than scrolling sideways: a clipped last chip gave no hint that it
+            // scrolled. Two rows at most, so on a phone it doesn't crowd out the answer.
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                itemVerticalAlignment = Alignment.CenterVertically,
+                maxLines = 2
             ) {
-                item {
-                    Text("Popular:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(stats.topSearches) { top ->
+                Text("Popular:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                stats.topSearches.forEach { top ->
                     AssistChip(
                         onClick = { onAsk(top.query) },
                         label = { Text(top.query, style = MaterialTheme.typography.labelSmall) },

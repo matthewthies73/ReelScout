@@ -144,6 +144,9 @@ def main() -> None:
     # README header.
     write(icon, "docs/icon.png", 256)
 
+    # In-app logo above the empty-state heading (Compose Multiplatform resource, all targets).
+    write(icon, "composeApp/src/commonMain/composeResources/drawable/logo.png", 256)
+
 
 if __name__ == "__main__":
     main()

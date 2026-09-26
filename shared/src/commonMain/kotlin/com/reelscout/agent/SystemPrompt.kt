@@ -40,6 +40,8 @@ object SystemPrompt {
         appendLine("Cite which source each answer came from (TMDB, Watchmode, or Archive.org),")
         appendLine("include the direct link for each free option when a tool returned one,")
         appendLine("and never claim a title is available somewhere the tools did not confirm.")
+        appendLine("Only mention sources you actually checked for that title: don't say a title isn't")
+        appendLine("on Archive.org unless you called search_public_domain for it.")
         appendLine()
         appendLine("What counts as free:")
         appendLine("- free_options are free for anyone (ad-supported or no-cost services).")
