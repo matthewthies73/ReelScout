@@ -48,6 +48,28 @@ data class Title(
     val posterPath: String?
 )
 
+/** An actor (or other person) from TMDB's people search, with a few titles to tell namesakes apart. */
+@Serializable
+data class Person(
+    val tmdbId: Int,
+    val name: String,
+    val knownForDepartment: String?,
+    val knownFor: List<String>
+)
+
+/** One title in a person's acting credits. No synopsis: a filmography is long, and Claude only needs to pick from it. */
+@Serializable
+data class Credit(
+    val tmdbId: Int,
+    val name: String,
+    val mediaType: MediaType,
+    val releaseYear: Int?,
+    val character: String?,
+    val posterPath: String?
+) {
+    fun toTitle(): Title = Title(tmdbId, name, mediaType, overview = "", releaseYear, posterPath)
+}
+
 /** One place to watch a title. `adSupported` is null when the source doesn't say. */
 @Serializable
 data class WatchOption(

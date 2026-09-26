@@ -22,7 +22,7 @@ desktop and the web, from one Kotlin codebase.**
 </p>
 
 Ask about a title, *"Night of the Living Dead"* or *"sci-fi like Interstellar I can watch free"*,
-and ReelScout's agent looks it up in live catalog data, checks where it's streaming in your
+or an actor, *"what Tom Hanks movies can I stream free?"*, and ReelScout's agent looks it up in live catalog data, checks where it's streaming in your
 country, falls back to public-domain archives for older films, and answers with direct
 links. It never answers from the model's memory of "what's on Netflix", which goes stale
 the day it's written.
@@ -30,7 +30,7 @@ the day it's written.
 ## Highlights
 
 - **A real agent, not a prompt wrapper.** Claude runs a multi-step tool-use loop: resolve
-  the title, cross-check two availability sources, fall back to Archive.org, then
+  the title (or an actor's filmography), cross-check two availability sources, fall back to Archive.org, then
   answer, citing which source confirmed each option.
 - **One codebase, four platforms.** Compose Multiplatform UI and shared Kotlin logic,
   including the agent loop itself, on Android, iOS, desktop (JVM) and web (Kotlin/Wasm).
@@ -38,6 +38,8 @@ the day it's written.
   official APIs. No scraping, no torrents.
 - **Honest about "free".** Ad-supported services, library-card services (Hoopla, Kanopy)
   and paid tiers are reported separately, never mixed together.
+- **Actor lookup.** Ask by actor and the agent pulls their acting credits from TMDB, picks
+  the titles that fit, and checks where each one is free, naming the character they played.
 - **15 countries**, follow-up questions ("what about the 1990 remake?"), saved titles,
   and a live search counter with the week's most-asked questions.
 - **Production-shaped.** A locked-down edge relay, CI on every PR (including an iOS build),
@@ -68,10 +70,11 @@ flowchart LR
     pages["Cloudflare Pages<br/>Wasm build"] -. serves .-> ui
 ```
 
-1. The app sends the question, conversation history and four tool definitions to Claude,
+1. The app sends the question, conversation history and six tool definitions to Claude,
    through the relay.
 2. Claude asks for tools. `AgentLoop` runs them against the live APIs (`search_titles`,
-   `get_watch_providers`, `get_watchmode_sources`, `search_public_domain`) and sends back
+   `search_people`, `get_person_credits`, `get_watch_providers`, `get_watchmode_sources`,
+   `search_public_domain`) and sends back
    the results, trimmed to what matters.
 3. This repeats until Claude has enough to answer. The answer is rendered as Markdown with
    named links, and the titles it covered can be saved.
@@ -165,7 +168,7 @@ account. Only the total count and the week's most-asked short questions are publ
 | Phase | |
 |---|---|
 | 0–4 · Scaffold, data layer, relay, CI/CD, agent loop | ✅ Done |
-| 5 · Region picker, free-source rules, favorites | ✅ Done |
+| 5 · Region picker, free-source rules, favorites, actor lookup | ✅ Done |
 | 6 · Packaging: Android release (Google Play + GitHub Releases), desktop installers | 🚧 In progress |
 | 7 · Portfolio polish: demo videos per platform | Planned |
 

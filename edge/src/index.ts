@@ -39,7 +39,11 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:8080", // ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
 ]);
 
-const TMDB_PATHS = [/^search\/multi$/, /^(movie|tv)\/\d+\/watch\/providers$/];
+const TMDB_PATHS = [
+  /^search\/(multi|person)$/,
+  /^(movie|tv)\/\d+\/watch\/providers$/,
+  /^person\/\d+\/combined_credits$/,
+];
 const WATCHMODE_PATHS = [/^search\/?$/, /^title\/[\w-]+\/sources\/?$/];
 const ARCHIVE_PATHS = [/^advancedsearch\.php$/];
 

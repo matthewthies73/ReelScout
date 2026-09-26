@@ -37,6 +37,8 @@ class AgentLoopTest {
                 claudeRequests += Json.parseToJsonElement((request.body as TextContent).text).jsonObject
                 val (status, body) = replies.removeFirst()
                 respond(body, status, json)
+            } else if (request.url.encodedPath.endsWith("/combined_credits")) {
+                respond("""{"cast": [{"id": 13, "title": "Forrest Gump", "media_type": "movie", "character": "Forrest Gump"}]}""", HttpStatusCode.OK, json)
             } else if (request.url.encodedPath.endsWith("/watch/providers")) {
                 respond("""{"results": {"GB": {}, "CA": {}}}""", HttpStatusCode.OK, json)
             } else {
@@ -175,6 +177,19 @@ class AgentLoopTest {
         val loop = agent(reply("tool_use", searchCall), reply("end_turn", text("Which one did you mean?")))
 
         assertTrue(loop.run("batman").titles.isEmpty())
+    }
+
+    @Test
+    fun `titles found through an actor's credits can be offered`() = runTest {
+        val loop = agent(
+            reply("tool_use", """{"type": "tool_use", "id": "toolu_c", "name": "get_person_credits", "input": {"personId": 31}}"""),
+            reply("tool_use", providersCall("""{"tmdbId": 13, "mediaType": "movie", "region": "US"}""")),
+            reply("end_turn", text("Free on Pluto TV."))
+        )
+
+        val answer = loop.run("tom hanks movies")
+
+        assertEquals(listOf("Forrest Gump"), answer.titles.map { it.name })
     }
 
     @Test

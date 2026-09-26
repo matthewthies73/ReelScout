@@ -4,7 +4,9 @@ import com.reelscout.data.ArchiveOrgRepository
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.commonJson
+import com.reelscout.domain.Credit
 import com.reelscout.domain.MediaType
+import com.reelscout.domain.Person
 import com.reelscout.domain.PublicDomainFilm
 import com.reelscout.domain.Region
 import com.reelscout.domain.RegionAvailability
@@ -46,6 +48,17 @@ class ToolExecutor(
             commonJson.encodeToString(ListSerializer(PublicDomainFilm.serializer()), archive.searchPublicDomainFilm(title))
         }
 
+        "search_people" -> {
+            val query = input.jsonObject["query"]?.jsonPrimitive?.content.orEmpty()
+            commonJson.encodeToString(ListSerializer(Person.serializer()), tmdb.searchPeople(query).take(MAX_PEOPLE_RESULTS))
+        }
+
+        "get_person_credits" -> {
+            val personId = input.jsonObject["personId"]?.jsonPrimitive?.int ?: error("personId is required")
+            // Prolific actors have hundreds of credits; the most popular are what people ask about.
+            commonJson.encodeToString(ListSerializer(Credit.serializer()), tmdb.getPersonCredits(personId).take(MAX_CREDITS))
+        }
+
         else -> """{"error":"unknown tool: $name"}"""
     }
 
@@ -61,5 +74,7 @@ class ToolExecutor(
     private companion object {
         const val MAX_SEARCH_RESULTS = 8
         const val MAX_OVERVIEW_CHARS = 200
+        const val MAX_PEOPLE_RESULTS = 5
+        const val MAX_CREDITS = 25
     }
 }

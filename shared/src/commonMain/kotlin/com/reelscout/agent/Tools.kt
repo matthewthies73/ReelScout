@@ -68,5 +68,35 @@ object Tools {
         }
     )
 
-    val all = listOf(searchTitles, getWatchProviders, getWatchmodeSources, searchPublicDomain)
+    val searchPeople = ToolDefinition(
+        name = "search_people",
+        description = "Search for actors by name. Returns candidate people with their TMDB person id " +
+            "and a few titles they're known for, to tell people with the same name apart.",
+        inputSchema = buildJsonObject {
+            put("type", "object")
+            putJsonObject("properties") {
+                putJsonObject("query") {
+                    put("type", "string")
+                    put("description", "The person's name.")
+                }
+            }
+            putJsonArray("required") { add("query") }
+        }
+    )
+
+    val getPersonCredits = ToolDefinition(
+        name = "get_person_credits",
+        description = "List the movies and TV shows a person (by TMDB person id) has acted in, most " +
+            "popular first, with the character they played. Each entry has the TMDB id and mediaType " +
+            "that the availability tools take.",
+        inputSchema = buildJsonObject {
+            put("type", "object")
+            putJsonObject("properties") {
+                putJsonObject("personId") { put("type", "integer") }
+            }
+            putJsonArray("required") { add("personId") }
+        }
+    )
+
+    val all = listOf(searchTitles, getWatchProviders, getWatchmodeSources, searchPublicDomain, searchPeople, getPersonCredits)
 }

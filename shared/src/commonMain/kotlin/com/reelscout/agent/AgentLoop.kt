@@ -1,6 +1,7 @@
 package com.reelscout.agent
 
 import com.reelscout.data.commonJson
+import com.reelscout.domain.Credit
 import com.reelscout.domain.Region
 import com.reelscout.domain.Title
 import kotlinx.serialization.builtins.ListSerializer
@@ -98,6 +99,8 @@ class AgentLoop(
         when (toolUse.name) {
             "search_titles" -> runCatching { commonJson.decodeFromString(ListSerializer(Title.serializer()), result) }
                 .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it } }
+            "get_person_credits" -> runCatching { commonJson.decodeFromString(ListSerializer(Credit.serializer()), result) }
+                .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it.toTitle() } }
             "get_watch_providers", "get_watchmode_sources" ->
                 runCatching { toolUse.input.jsonObject["tmdbId"]?.jsonPrimitive?.int }.getOrNull()?.let { checked += it }
         }

@@ -152,6 +152,8 @@ class ChatViewModel(
         "get_watch_providers" -> "Checking where it's streaming…"
         "get_watchmode_sources" -> "Cross-checking with Watchmode…"
         "search_public_domain" -> "Searching Archive.org's public-domain films…"
+        "search_people" -> "Looking up the actor on TMDB…"
+        "get_person_credits" -> "Going through their movies and shows…"
         else -> "Working…"
     }
 
