@@ -13,12 +13,14 @@ desktop and the web, from one Kotlin codebase.**
 [![Deploy Worker](https://github.com/matthewthies73/ReelScout/actions/workflows/deploy-worker.yml/badge.svg)](https://github.com/matthewthies73/ReelScout/actions/workflows/deploy-worker.yml)
 
 <p>
-  <img src="docs/screenshots/web-answer.png" alt="ReelScout on the web, answering 'Night of the Living Dead' with free streaming links" width="100%">
+  <img src="docs/screenshots/desktop-answer.png" alt="ReelScout on desktop in dark mode, linking Elvis Presley to Kevin Bacon in two degrees and checking where the connecting films are free" width="100%">
 </p>
 <p>
-  <img src="docs/screenshots/android-answer.png" alt="ReelScout on Android" width="32%">
+  <img src="docs/screenshots/android-answer.png" alt="ReelScout on Android, listing Tom Hanks movies and where each one streams free" width="32%">
   &nbsp;
-  <img src="docs/screenshots/android-saved.png" alt="Saved titles on Android" width="32%">
+  <img src="docs/screenshots/android-menu.png" alt="The menu on Android in dark mode: saved titles, dark mode and country" width="32%">
+  &nbsp;
+  <img src="docs/screenshots/android-saved.png" alt="Saved titles on Android in dark mode" width="32%">
 </p>
 
 Ask about a title, *"Night of the Living Dead"* or *"sci-fi like Interstellar I can watch free"*,
@@ -115,7 +117,7 @@ reasoning happens in the app.
 ```
 shared/       Agent loop, tool definitions, Anthropic client, TMDB/Watchmode/Archive.org
               repositories, domain models (commonMain + per-platform HTTP engines)
-composeApp/   Compose Multiplatform UI: chat screen, favorites, region picker
+composeApp/   Compose Multiplatform UI: chat screen, menu (favorites, dark mode, region picker)
               (commonMain + androidMain / iosMain / desktopMain / wasmJsMain)
 androidApp/   Android application module
 iosApp/       Xcode project hosting the composeApp framework

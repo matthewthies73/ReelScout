@@ -15,6 +15,9 @@ kotlin {
         namespace = "com.reelscout.app.ui"
         compileSdk = 37
         minSdk = 26
+        // Off by default for AGP's KMP library plugin; Compose resources (the logo) need it,
+        // or the Android app crashes with MissingResourceException.
+        androidResources { enable = true }
 
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
@@ -55,6 +58,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.compose.components.ui.tooling.preview)
             implementation(libs.markdown.renderer.m3)
             implementation(libs.multiplatform.settings.no.arg)

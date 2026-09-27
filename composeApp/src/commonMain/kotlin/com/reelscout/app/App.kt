@@ -1,10 +1,10 @@
 package com.reelscout.app
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -22,64 +22,76 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.rememberMarkdownState
 import com.reelscout.data.SearchStats
 import com.reelscout.domain.MediaType
 import com.reelscout.domain.Region
 import com.reelscout.domain.Title
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownTypography
-import com.mikepenz.markdown.model.rememberMarkdownState
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import reelscout.composeapp.generated.resources.Res
+import reelscout.composeapp.generated.resources.logo
 
 // Keeps lines readable on desktop and web instead of stretching across a wide window.
 private val MaxContentWidth = 760.dp
@@ -117,7 +129,7 @@ fun App() {
 }
 
 /** Stateless, so it can be rendered with any ChatUiState (previews, screenshots). */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 internal fun ChatScreen(
     state: ChatUiState,
@@ -141,73 +153,132 @@ internal fun ChatScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Reel Scout") },
-                // Taller than the default 64dp to fit the dark mode switch under Saved.
-                expandedHeight = 88.dp,
-                navigationIcon = {
-                    Column {
-                        TextButton(onClick = { onShowFavorites(true) }) {
-                            Text(if (state.favorites.isEmpty()) "Saved" else "Saved (${state.favorites.size})")
-                        }
-                        DarkModeSwitch(state.darkMode, onDarkModeChange)
-                    }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    // Back closes the menu first, rather than leaving the app (Android's back gesture).
+    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            MenuDrawer(
+                favoritesCount = state.favorites.size,
+                darkMode = state.darkMode,
+                region = state.region,
+                onRegionChange = onRegionChange,
+                onShowFavorites = {
+                    scope.launch { drawerState.close() }
+                    onShowFavorites(true)
                 },
-                actions = { RegionPicker(state.region, onRegionChange) }
-            )
-        },
-        bottomBar = {
-            ChatInput(
-                input = state.input,
-                statusText = state.statusText,
-                isLoading = state.isLoading,
-                stats = state.stats,
-                onInputChange = onInputChange,
-                onSend = onSend,
-                onAsk = onAsk
+                onDarkModeChange = onDarkModeChange
             )
         }
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            Box(Modifier.widthIn(max = MaxContentWidth).fillMaxSize().padding(horizontal = 16.dp)) {
-                if (state.messages.isEmpty()) {
-                    EmptyState(region = state.region, onExampleClick = onAsk, enabled = !state.isLoading)
-                } else {
-                    MessageList(
-                        messages = state.messages,
-                        savedIds = state.favorites.mapTo(mutableSetOf()) { it.tmdbId },
-                        onToggleFavorite = onToggleFavorite
-                    )
-                }
-                // Floats just above the input bar. Inside the width-capped column, so it
-                // lines up with the Ask button on wide windows too.
-                if (state.messages.isNotEmpty() && !state.isLoading) {
-                    ExtendedFloatingActionButton(
-                        onClick = onNewChat,
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 12.dp)
-                    ) { Text("New chat") }
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Image(
+                                painter = painterResource(Res.drawable.logo),
+                                contentDescription = "Reel Scout logo",
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Text("Reel Scout")
+                        }
+                    },
+                    // A little taller than the default 64dp to fit the logo over the title.
+                    expandedHeight = 72.dp,
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(MenuIcon, contentDescription = "Menu")
+                        }
+                    }
+                )
+            },
+            bottomBar = {
+                ChatInput(
+                    input = state.input,
+                    statusText = state.statusText,
+                    isLoading = state.isLoading,
+                    stats = state.stats,
+                    onInputChange = onInputChange,
+                    onSend = onSend,
+                    onAsk = onAsk
+                )
+            }
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.widthIn(max = MaxContentWidth).fillMaxSize().padding(horizontal = 16.dp)) {
+                    if (state.messages.isEmpty()) {
+                        EmptyState(region = state.region, onExampleClick = onAsk, enabled = !state.isLoading)
+                    } else {
+                        MessageList(
+                            messages = state.messages,
+                            savedIds = state.favorites.mapTo(mutableSetOf()) { it.tmdbId },
+                            onToggleFavorite = onToggleFavorite
+                        )
+                    }
+                    // Floats just above the input bar. Inside the width-capped column, so it
+                    // lines up with the Ask button on wide windows too.
+                    if (state.messages.isNotEmpty() && !state.isLoading) {
+                        ExtendedFloatingActionButton(
+                            onClick = onNewChat,
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 12.dp)
+                        ) { Text("New chat") }
+                    }
                 }
             }
         }
     }
 }
 
-/** Switches between the original light theme and dark mode. */
+/** Saved titles, dark mode and region, behind the menu button so the top bar stays uncluttered. */
 @Composable
-private fun DarkModeSwitch(darkMode: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 12.dp).toggleable(value = darkMode, role = Role.Switch, onValueChange = onChange)
-    ) {
-        Text("Dark mode", style = MaterialTheme.typography.labelMedium)
-        // The row handles the tap, so the switch doesn't need its own 48dp touch target.
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            Switch(checked = darkMode, onCheckedChange = null, modifier = Modifier.padding(start = 8.dp).scale(0.7f))
+private fun MenuDrawer(
+    favoritesCount: Int,
+    darkMode: Boolean,
+    region: Region,
+    onRegionChange: (Region) -> Unit,
+    onShowFavorites: () -> Unit,
+    onDarkModeChange: (Boolean) -> Unit
+) {
+    ModalDrawerSheet(Modifier.widthIn(max = 300.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(24.dp)) {
+            Image(painterResource(Res.drawable.logo), contentDescription = null, modifier = Modifier.size(32.dp))
+            Text("Reel Scout", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 12.dp))
         }
+        val itemPadding = Modifier.padding(horizontal = 12.dp)
+        NavigationDrawerItem(
+            label = { Text("Saved titles") },
+            badge = { if (favoritesCount > 0) Text("$favoritesCount") },
+            selected = false,
+            onClick = onShowFavorites,
+            modifier = itemPadding
+        )
+        NavigationDrawerItem(
+            label = { Text("Country") },
+            badge = { RegionPicker(region, onRegionChange) },
+            selected = false,
+            onClick = {},
+            modifier = itemPadding
+        )
+        NavigationDrawerItem(
+            label = { Text("Dark mode") },
+            // The item handles the tap, so the switch only shows the state.
+            badge = { Switch(checked = darkMode, onCheckedChange = null) },
+            selected = false,
+            onClick = { onDarkModeChange(!darkMode) },
+            modifier = itemPadding
+        )
     }
 }
+
+/** The Material "menu" (hamburger) icon; the app has no icon library for just this one. */
+private val MenuIcon: ImageVector = ImageVector.Builder("Menu", 24.dp, 24.dp, 24f, 24f).addPath(
+    pathData = addPathNodes("M3,18h18v-2H3v2zM3,13h18v-2H3v2zM3,6v2h18V6H3z"),
+    fill = SolidColor(Color.Black)
+).build()
 
 /** Country for availability lookups; applies from the next question. */
 @Composable
@@ -276,7 +347,7 @@ private fun ChatInput(
             Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
             contentAlignment = Alignment.Center
         ) {
-            Column(Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)) {
                 if (statusText != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -316,6 +387,7 @@ private fun ChatInput(
 }
 
 /** Global search count plus the week's most-asked questions (edge/src/analytics.ts). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchFooter(stats: SearchStats, enabled: Boolean, onAsk: (String) -> Unit) {
     Column(Modifier.padding(top = 8.dp)) {
@@ -325,14 +397,15 @@ private fun SearchFooter(stats: SearchStats, enabled: Boolean, onAsk: (String) -
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (stats.topSearches.isNotEmpty()) {
-            LazyRow(
+            // Wraps rather than scrolling sideways: a clipped last chip gave no hint that it
+            // scrolled. Two rows at most, so on a phone it doesn't crowd out the answer.
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                itemVerticalAlignment = Alignment.CenterVertically,
+                maxLines = 2
             ) {
-                item {
-                    Text("Popular:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(stats.topSearches) { top ->
+                Text("Popular:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                stats.topSearches.forEach { top ->
                     AssistChip(
                         onClick = { onAsk(top.query) },
                         label = { Text(top.query, style = MaterialTheme.typography.labelSmall) },
