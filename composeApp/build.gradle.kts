@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.compose.components.ui.tooling.preview)
             implementation(libs.markdown.renderer.m3)
             implementation(libs.multiplatform.settings.no.arg)

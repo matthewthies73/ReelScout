@@ -18,6 +18,8 @@ desktop and the web, from one Kotlin codebase.**
 <p>
   <img src="docs/screenshots/android-answer.png" alt="ReelScout on Android, listing Tom Hanks movies and where each one streams free" width="32%">
   &nbsp;
+  <img src="docs/screenshots/android-menu.png" alt="The menu on Android in dark mode: saved titles, dark mode and country" width="32%">
+  &nbsp;
   <img src="docs/screenshots/android-saved.png" alt="Saved titles on Android in dark mode" width="32%">
 </p>
 
@@ -115,7 +117,7 @@ reasoning happens in the app.
 ```
 shared/       Agent loop, tool definitions, Anthropic client, TMDB/Watchmode/Archive.org
               repositories, domain models (commonMain + per-platform HTTP engines)
-composeApp/   Compose Multiplatform UI: chat screen, favorites, region picker
+composeApp/   Compose Multiplatform UI: chat screen, menu (favorites, dark mode, region picker)
               (commonMain + androidMain / iosMain / desktopMain / wasmJsMain)
 androidApp/   Android application module
 iosApp/       Xcode project hosting the composeApp framework
