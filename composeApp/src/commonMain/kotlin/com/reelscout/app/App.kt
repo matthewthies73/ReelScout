@@ -257,18 +257,18 @@ private fun MenuDrawer(
             modifier = itemPadding
         )
         NavigationDrawerItem(
+            label = { Text("Country") },
+            badge = { RegionPicker(region, onRegionChange) },
+            selected = false,
+            onClick = {},
+            modifier = itemPadding
+        )
+        NavigationDrawerItem(
             label = { Text("Dark mode") },
             // The item handles the tap, so the switch only shows the state.
             badge = { Switch(checked = darkMode, onCheckedChange = null) },
             selected = false,
             onClick = { onDarkModeChange(!darkMode) },
-            modifier = itemPadding
-        )
-        NavigationDrawerItem(
-            label = { Text("Country") },
-            badge = { RegionPicker(region, onRegionChange) },
-            selected = false,
-            onClick = {},
             modifier = itemPadding
         )
     }
