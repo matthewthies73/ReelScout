@@ -13,7 +13,7 @@ Both should be visible at a glance in the README: architecture diagram, a demo G
 
 User asks something like *"sci-fi movies like Interstellar that I can watch for free right now"*. The agent:
 
-- resolves candidate titles via TMDB search (or, for a question about an actor, finds the person and pulls their acting credits),
+- resolves candidate titles via TMDB search (or, for a question about a person, cast or crew, finds them and pulls their credits),
 - checks where each is streaming via TMDB `watch/providers` (which is itself backed by JustWatch licensing data) and Watchmode as a cross-check, filtered to ad-supported/free flags,
 - falls back to Archive.org's public-domain film collection for older titles not covered by modern catalogs,
 - returns a grounded, cited answer — never answering from the model's own memory of "what's on Netflix," since that goes stale immediately.
@@ -24,7 +24,7 @@ Region defaults to **US** (both for TMDB/Watchmode provider lookups and for whic
 
 | Source | Use | Notes |
 |---|---|---|
-| TMDB API | title and people search, actor credits, metadata, `watch/providers` | free API key, well documented, effectively includes JustWatch's provider data |
+| TMDB API | title and people search, cast and crew credits, metadata, `watch/providers` | free API key, well documented, effectively includes JustWatch's provider data |
 | Watchmode API | cross-check + explicit free/ad-supported flags | free tier available |
 | Archive.org advancedsearch API | true public-domain titles | no auth needed |
 
@@ -97,15 +97,15 @@ See [README.md → Project layout](./README.md#project-layout).
 - ✅ **Phase 2 — Cloudflare relay.** Stand up the `edge` Worker with the four proxy routes, set Worker secrets, deploy manually once via `wrangler deploy` to confirm it works end to end before wiring CI.
 - ✅ **Phase 3 — CI/CD.** Add the two GitHub Actions workflows above; confirm a push to `main` actually redeploys the Worker and the web bundle.
 - ✅ **Phase 4 — Agent loop.** Implement the tool-use loop in `shared/agent`, wire a chat UI (message list, tool-call indicators like "searching TMDB…" — good for demo video), test against all four proxy routes.
-- ✅ **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites, actor lookup (`search_people` → `get_person_credits` → the usual availability checks; credits are cast-only, most popular first, capped at 25, with talk/news/reality appearances dropped), actor connections (`find_connection`: Six Degrees of Kevin Bacon via a two-ended search over films and casts in `ConnectionFinder`, capped at 40 TMDB calls and the 10 most popular nodes per step, films only; documentaries and archive footage don't count as links), and a dark mode switch, remembered per device. Saved titles, dark mode and the country picker live in a hamburger menu (side drawer), so the top bar holds just the logo and title. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
+- ✅ **Phase 5 — Content polish.** Region selection, free-source filtering rules, favorites, cast and crew lookup (`search_people` → `get_person_credits` → the usual availability checks; one credit per title with the character played and/or crew jobs, most popular first, capped at 25, with talk/news/reality appearances and "Thanks"/"In Memory Of" crew credits dropped), connections (`find_connection`: Six Degrees of Kevin Bacon via a two-ended search over films and their cast and crew in `ConnectionFinder`, growing the smaller end first, capped at 40 TMDB calls and the 10 most popular nodes per step, films only; documentaries and archive footage don't count as links), and a dark mode switch, remembered per device. Saved titles, dark mode and the country picker live in a hamburger menu (side drawer), so the top bar holds just the logo and title. (Favorites are a JSON list in the per-device settings store rather than SQLDelight as first planned: a list of saved titles doesn't need a database, and SQLDelight on Kotlin/Wasm would have meant async queries plus a sql.js web worker.)
 - 🚧 **Phase 6 — Platform packaging.** App icons; signed Android release on Google Play (internal testing) and GitHub Releases; desktop installers (DMG/MSI/DEB) attached to tagged releases. iOS stays a simulator build (built in CI) rather than TestFlight. The Pages URL is live and stable.
 - **Phase 7 — Portfolio polish.** Per-platform demo recordings. (README with architecture diagram, screenshots, design decisions and license: done.)
 
 ## Testing strategy
 
 - **Agent loop** (`AgentLoopTest`): canned Claude response sequences against a Ktor `MockEngine` relay: tool round-trips (thinking blocks echoed unchanged), conversation history and its cap, retry on overload but not on rate limits, refusals, truncated answers, region handling, and which titles an answer covers.
-- **Tools** (`ToolExecutorTest`): each tool against fixture responses, including region filtering, Watchmode de-duplication, library-card splitting, the Archive.org query, and actor credit filtering (talk shows dropped, one entry per title, popularity order, cap).
-- **Actor connections** (`ConnectionFinderTest`): a small film graph behind the mock relay: one- and two-degree chains with characters, documentaries excluded, the call limit, and failed lookups raising errors instead of reading as empty credits.
+- **Tools** (`ToolExecutorTest`): each tool against fixture responses, including region filtering, Watchmode de-duplication, library-card splitting, the Archive.org query, and credit filtering (talk shows dropped, one entry per title with crew jobs merged in, popularity order, cap).
+- **Connections** (`ConnectionFinderTest`): a small film graph behind the mock relay: one- and two-degree chains with characters, links through crew jobs, a little-known person searched further out than a well-known one, documentaries excluded, the call limit, and failed lookups raising errors instead of reading as empty credits.
 - **Relay analytics** (`edge/test`, `node:test`): extracting the question, answer, tools and region from Messages API exchanges.
 - **Post-deploy smoke tests** in both deploy workflows against the live hostname.
 

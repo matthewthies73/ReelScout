@@ -316,7 +316,7 @@ private fun EmptyState(region: Region, onExampleClick: (String) -> Unit, enabled
         ) {
             Text("Find something free to watch", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(
-                "Ask about any movie, show or actor. Reel Scout checks live streaming data and public-domain " +
+                "Ask about any movie, show, actor or crew member. Reel Scout checks live streaming data and public-domain " +
                     "archives for free, legal ways to watch it in ${region.inSentence}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -365,7 +365,7 @@ private fun ChatInput(
                         onValueChange = onInputChange,
                         enabled = !isLoading,
                         singleLine = true,
-                        placeholder = { Text("Ask about a movie, show or actor…") },
+                        placeholder = { Text("Ask about a movie, show or person…") },
                         // A single-line field runs its IME action on Enter too, so this covers
                         // the Send key on phone keyboards and Enter on desktop and web.
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
