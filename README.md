@@ -47,6 +47,11 @@ the day it's written.
   Kotlin walks TMDB's film credits, cast and crew, from both ends to find a chain of films
   linking them, then checks where those films are free. Crew count, so even someone with a
   single indie credit behind the camera can be linked to Kevin Bacon.
+- **Six Degrees of Matthew Thies.** The Kevin Bacon game's joke sequel: anyone the app's
+  creator, a Hollywood nobody, has met in person is one degree from him, so LeVar Burton is
+  closer to Matthew Thies (1) than to Kevin Bacon (2). The list lives in the relay
+  ([`edge/src/personalLinks.ts`](edge/src/personalLinks.ts)), so adding someone is a
+  one-line change that reaches every app without a release.
 - **15 countries**, follow-up questions ("what about the 1990 remake?"), saved titles,
   dark mode, and a live search counter with the week's most-asked questions.
 - **Production-shaped.** A locked-down edge relay, CI on every PR (including an iOS build),

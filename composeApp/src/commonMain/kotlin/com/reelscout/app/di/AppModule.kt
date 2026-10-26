@@ -8,6 +8,7 @@ import com.reelscout.app.FavoritesStore
 import com.reelscout.app.RegionStore
 import com.reelscout.app.ThemeStore
 import com.reelscout.data.ArchiveOrgRepository
+import com.reelscout.data.PersonalLinksRepository
 import com.reelscout.data.StatsRepository
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
@@ -27,11 +28,12 @@ val appModule = module {
     single { WatchmodeRepository(get()) }
     single { ArchiveOrgRepository(get()) }
     single { StatsRepository(get()) }
+    single { PersonalLinksRepository(get()) }
     single { RegionStore() }
     single { FavoritesStore() }
     single { ThemeStore() }
     single { AnthropicClient(get()) }
-    single { ToolExecutor(get(), get(), get()) }
+    single { ToolExecutor(get(), get(), get(), get()) }
     single { AgentLoop(get(), get()) }
     // viewModel, not single: tied to the screen's lifecycle, so viewModelScope is cancelled
     // when the screen goes away instead of living for the whole process.

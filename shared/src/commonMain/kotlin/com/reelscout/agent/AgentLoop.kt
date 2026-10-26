@@ -103,7 +103,7 @@ class AgentLoop(
             "get_person_credits" -> runCatching { commonJson.decodeFromString(ListSerializer(Credit.serializer()), result) }
                 .getOrNull()?.forEach { found.getOrPut(it.tmdbId) { it.toTitle() } }
             "find_connection" -> runCatching { commonJson.decodeFromString(Connection.serializer(), result) }
-                .getOrNull()?.links?.forEach { found.getOrPut(it.movie.tmdbId) { it.movie } }
+                .getOrNull()?.links?.mapNotNull { it.movie }?.forEach { found.getOrPut(it.tmdbId) { it } }
             "get_watch_providers", "get_watchmode_sources" ->
                 runCatching { toolUse.input.jsonObject["tmdbId"]?.jsonPrimitive?.int }.getOrNull()?.let { checked += it }
         }

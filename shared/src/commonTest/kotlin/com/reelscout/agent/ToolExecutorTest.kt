@@ -1,6 +1,7 @@
 package com.reelscout.agent
 
 import com.reelscout.data.ArchiveOrgRepository
+import com.reelscout.data.PersonalLinksRepository
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.commonJson
@@ -39,7 +40,7 @@ class ToolExecutorTest {
             val (status, body) = byPath[request.url.encodedPath] ?: (HttpStatusCode.NotFound to "{}")
             respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
         }) { installEdgeDefaults() }
-        return ToolExecutor(TmdbRepository(client), WatchmodeRepository(client), ArchiveOrgRepository(client))
+        return ToolExecutor(TmdbRepository(client), WatchmodeRepository(client), ArchiveOrgRepository(client), PersonalLinksRepository(client))
     }
 
     private fun input(json: String) = Json.parseToJsonElement(json)

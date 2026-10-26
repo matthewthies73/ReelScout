@@ -49,6 +49,8 @@ CI (`.github/workflows/ci.yml`) runs `:shared:desktopTest`, `:androidApp:assembl
 
 **Analytics** are recorded by the relay (`edge/src/analytics.ts`), not the clients: it extracts question/answer/tools/region from completed Messages exchanges into D1 (`edge/migrations/`) and serves `/api/stats`, read by `StatsRepository`. New schema changes go in a new numbered migration file.
 
+**Personal links** (Six Degrees of Matthew Thies, the app's creator) are a constant in `edge/src/personalLinks.ts`, served at `/api/personal-links`, read by `PersonalLinksRepository` (once per run; a failed fetch means none) and used by `ConnectionFinder` only when he's one of the two people. Each is one degree, a `ConnectionLink` with `how` instead of a `movie`. Adding one is an entry there plus a push to main; `edge/test/personalLinks.test.ts` validates the entries.
+
 **UI/DI:** `composeApp/.../di/AppModule.kt` wires one shared `HttpClient` into all repositories, `AnthropicClient`, `ToolExecutor`, `AgentLoop`, and `ChatViewModel`. Each platform entry point calls `initKoin()`. Favorites and region are persisted with multiplatform-settings (`FavoritesStore`, `RegionStore`), not a database.
 
 **Web cache-busting:** `composeApp/build.gradle.kts` post-processes the Wasm distribution to rewrite `src="reelscout.js"` in `index.html` to `reelscout.js?v=<content hash>`. The build fails if `index.html` stops loading `reelscout.js` by that exact string; `deploy-web.yml` smoke-tests that the live site serves the new hash.
