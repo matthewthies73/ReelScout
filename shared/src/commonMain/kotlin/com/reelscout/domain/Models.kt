@@ -87,12 +87,15 @@ data class Connection(val degrees: Int, val links: List<ConnectionLink>)
 data class ConnectionLink(
     val from: String,
     val fromCharacter: String?,
-    val movie: Title,
+    // Null for a personal link (two people who've met, see PersonalLinksRepository), which has [how] instead.
+    val movie: Title?,
     val to: String,
     val toCharacter: String?,
     // Crew jobs on the film, for a link made behind the camera. Left out of the JSON when empty.
     val fromJobs: List<String> = emptyList(),
-    val toJobs: List<String> = emptyList()
+    val toJobs: List<String> = emptyList(),
+    // How they met, for a personal link. Left out of the JSON otherwise.
+    val how: String? = null
 )
 
 /** One place to watch a title. `adSupported` is null when the source doesn't say. */

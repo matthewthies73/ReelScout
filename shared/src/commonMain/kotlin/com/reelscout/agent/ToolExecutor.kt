@@ -2,6 +2,7 @@ package com.reelscout.agent
 
 import com.reelscout.data.ArchiveOrgRepository
 import com.reelscout.data.ConnectionFinder
+import com.reelscout.data.PersonalLinksRepository
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.commonJson
@@ -23,7 +24,8 @@ import kotlinx.serialization.json.jsonPrimitive
 class ToolExecutor(
     private val tmdb: TmdbRepository,
     private val watchmode: WatchmodeRepository,
-    private val archive: ArchiveOrgRepository
+    private val archive: ArchiveOrgRepository,
+    private val personalLinks: PersonalLinksRepository
 ) {
     /** [defaultRegion] is the user's picked region, used when Claude's input names none. */
     suspend fun execute(name: String, input: JsonElement, defaultRegion: String = Region.DEFAULT.code): String = when (name) {
@@ -63,7 +65,7 @@ class ToolExecutor(
 
         "find_connection" -> {
             val obj = input.jsonObject
-            val connection = ConnectionFinder(tmdb).find(
+            val connection = ConnectionFinder(tmdb, personalLinks = personalLinks.get()).find(
                 fromPersonId = obj["fromPersonId"]?.jsonPrimitive?.int ?: error("fromPersonId is required"),
                 fromName = obj["fromName"]?.jsonPrimitive?.content.orEmpty(),
                 toPersonId = obj["toPersonId"]?.jsonPrimitive?.int ?: error("toPersonId is required"),

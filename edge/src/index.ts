@@ -13,6 +13,7 @@
  */
 
 import { completedSearch, readStats, recordSearch } from "./analytics";
+import { PERSONAL_LINKS } from "./personalLinks";
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -177,6 +178,13 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
         headers: { "content-type": "application/json", "cache-control": "no-store" },
       })
     );
+  }
+
+  // Six Degrees of Matthew Thies (src/personalLinks.ts). A constant, so nothing to rate-limit.
+  if (url.pathname === "/api/personal-links" && request.method === "GET") {
+    return new Response(JSON.stringify(PERSONAL_LINKS), {
+      headers: { "content-type": "application/json", "cache-control": "public, max-age=300" },
+    });
   }
 
   const dataRoutes: [string, (path: string) => Promise<Response>][] = [

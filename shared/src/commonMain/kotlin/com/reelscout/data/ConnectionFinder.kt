@@ -29,18 +29,24 @@ import kotlinx.coroutines.coroutineScope
  * as either one has seen a node, whether or not it was expanded.
  *
  * Films only, as in the original game: TV casts and crews are large and would dominate the graph.
+ *
+ * [personalLinks] (Six Degrees of Matthew Thies) are people he has met, one degree from him
+ * without a film. They only count when he's one of the two people being connected.
  */
 class ConnectionFinder(
     private val tmdb: TmdbRepository,
     private val maxCalls: Int = 40,
-    private val beamWidth: Int = 10
+    private val beamWidth: Int = 10,
+    private val personalLinks: PersonalLinks? = null
 ) {
     private sealed interface Node { val id: Int }
     private data class PersonNode(override val id: Int) : Node
     private data class MovieNode(override val id: Int) : Node
+    // Takes a film's place between two people who've met; the id is the met person's.
+    private data class PersonalLinkNode(override val id: Int) : Node
 
     /** One side of the search: how each node it has seen was reached. */
-    private class Side(start: Node) {
+    private class Side(val start: Node) {
         val parent = mutableMapOf<Node, Node?>(start to null)
         val depth = mutableMapOf(start to 0)
         var frontier = listOf(start)
@@ -59,6 +65,7 @@ class ConnectionFinder(
         // and their crew jobs.
         private val characters = mutableMapOf<Pair<Int, Int>, String>()
         private val jobs = mutableMapOf<Pair<Int, Int>, MutableSet<String>>()
+        private val howMet = mutableMapOf<PersonalLinkNode, String>()
 
         suspend fun run(fromPersonId: Int, fromName: String, toPersonId: Int, toName: String): Connection? {
             if (fromPersonId == toPersonId) return Connection(degrees = 0, links = emptyList())
@@ -66,6 +73,16 @@ class ConnectionFinder(
             val b = Side(PersonNode(toPersonId))
             names[PersonNode(fromPersonId)] = fromName
             names[PersonNode(toPersonId)] = toName
+
+            personalLinks?.let { links ->
+                when (links.person.tmdbId) {
+                    fromPersonId -> addPersonalLinks(a, links)
+                    toPersonId -> addPersonalLinks(b, links)
+                }
+            }
+            // Someone he's met: one degree, before any TMDB call.
+            if (b.start in a.parent) return connectionThrough(b.start, a, b)
+            if (a.start in b.parent) return connectionThrough(a.start, a, b)
 
             var calls = 0
             while (calls < maxCalls && a.frontier.isNotEmpty() && b.frontier.isNotEmpty()) {
@@ -95,11 +112,32 @@ class ConnectionFinder(
             return null
         }
 
+        /**
+         * Puts everyone [links] says the start of [side] has met one degree out from it, as if
+         * through a film, and adds them to the frontier so the search goes on from them too.
+         */
+        private fun addPersonalLinks(side: Side, links: PersonalLinks) {
+            for (link in links.links) {
+                val person = PersonNode(link.tmdbId)
+                if (person in side.parent) continue
+                val meeting = PersonalLinkNode(link.tmdbId)
+                side.parent[meeting] = side.start
+                side.depth[meeting] = 1
+                side.parent[person] = meeting
+                side.depth[person] = 2
+                side.frontier += person
+                names.getOrPut(person) { link.name }
+                howMet[meeting] = link.how
+            }
+        }
+
         private suspend fun fetch(node: Node): List<Any> = when (node) {
             is PersonNode -> tmdb.personCredits(node.id)
                 // Documentaries link people who only appear as themselves; not a role.
                 .filter { it.mediaType == "movie" && DOCUMENTARY !in it.genreIds }
             is MovieNode -> tmdb.movieCredits(node.id)
+            // Never in a frontier: addPersonalLinks records both people it links up front.
+            is PersonalLinkNode -> error("personal links aren't fetched")
         }
 
         /**
@@ -135,8 +173,17 @@ class ConnectionFinder(
             val path = generateSequence(meeting) { a.parent[it] }.toList().reversed() +
                 generateSequence(b.parent[meeting]) { b.parent[it] }.toList()
 
-            // The path alternates person, movie, person, ... starting and ending on a person.
+            // The path alternates person, movie, person, ... starting and ending on a person,
+            // with a personal link in place of a movie where two people have met.
             val links = path.windowed(size = 3, step = 2).map { (from, movie, to) ->
+                if (movie is PersonalLinkNode) return@map ConnectionLink(
+                    from = names.getValue(from),
+                    fromCharacter = null,
+                    movie = null,
+                    to = names.getValue(to),
+                    toCharacter = null,
+                    how = howMet.getValue(movie)
+                )
                 ConnectionLink(
                     from = names.getValue(from),
                     fromCharacter = characters[from.id to movie.id],

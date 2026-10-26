@@ -101,7 +101,7 @@ private val ExampleQuestions = listOf(
     "Sci-fi movies like Interstellar I can watch free",
     "Tom Hanks movies I can stream free",
     "How is Elvis connected to Kevin Bacon?",
-    "How is Kevin Bacon connected to Matthew Thies?"
+    "How is LeVar Burton connected to Matthew Thies?"
 )
 
 /**

@@ -106,7 +106,9 @@ object Tools {
             "person id), where each link is a film both people worked on, in the cast or the crew. " +
             "Returns the number of degrees and each link with the characters played and/or crew " +
             "jobs, or connected: false if no chain turned up. Searches the most popular films and " +
-            "people, so the chain is short but not guaranteed to be the shortest.",
+            "people, so the chain is short but not guaranteed to be the shortest. When one of the " +
+            "two is Matthew Thies, people he has met in person count too, as a link with how they " +
+            "met (\"how\") in place of a film.",
         inputSchema = buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {

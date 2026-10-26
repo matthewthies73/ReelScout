@@ -1,6 +1,7 @@
 package com.reelscout.agent
 
 import com.reelscout.data.ArchiveOrgRepository
+import com.reelscout.data.PersonalLinksRepository
 import com.reelscout.data.TmdbRepository
 import com.reelscout.data.WatchmodeRepository
 import com.reelscout.data.installEdgeDefaults
@@ -47,7 +48,7 @@ class AgentLoopTest {
         }) { installEdgeDefaults() }
         return AgentLoop(
             AnthropicClient(client),
-            ToolExecutor(TmdbRepository(client), WatchmodeRepository(client), ArchiveOrgRepository(client))
+            ToolExecutor(TmdbRepository(client), WatchmodeRepository(client), ArchiveOrgRepository(client), PersonalLinksRepository(client))
         )
     }
 

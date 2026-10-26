@@ -23,7 +23,12 @@ class ConnectionFinderTest {
 
     private var calls = 0
 
-    private fun finder(films: List<Film>, maxCalls: Int = 40, failWith: HttpStatusCode? = null): ConnectionFinder {
+    private fun finder(
+        films: List<Film>,
+        maxCalls: Int = 40,
+        failWith: HttpStatusCode? = null,
+        personalLinks: PersonalLinks? = null
+    ): ConnectionFinder {
         val client = HttpClient(MockEngine { request ->
             calls++
             val json = headersOf(HttpHeaders.ContentType, "application/json")
@@ -45,7 +50,7 @@ class ConnectionFinderTest {
             } ?: error("unexpected request $path")
             respond(body, HttpStatusCode.OK, json)
         }) { installEdgeDefaults() }
-        return ConnectionFinder(TmdbRepository(client), maxCalls = maxCalls)
+        return ConnectionFinder(TmdbRepository(client), maxCalls = maxCalls, personalLinks = personalLinks)
     }
 
     private fun Role.fields() = if (job != null) """"job": "$job"""" else """"character": "$character""""
@@ -57,7 +62,9 @@ class ConnectionFinderTest {
     private val changeOfHabit = Film(10, "Change of Habit", 1969, listOf(elvis, asner.copy(character = "Lt. Moroney")))
     private val jfk = Film(20, "JFK", 1991, listOf(asner.copy(character = "Guy Banister"), bacon))
 
-    private fun Connection.chain() = links.map { "${it.from} > ${it.movie.name} (${it.movie.releaseYear}) > ${it.to}" }
+    private fun Connection.chain() = links.map { link ->
+        "${link.from} > ${link.movie?.let { "${it.name} (${it.releaseYear})" } ?: link.how} > ${link.to}"
+    }
 
     // Little known, and crew only: two jobs on one indie film.
     private val butterfly = Film(
@@ -130,6 +137,40 @@ class ConnectionFinderTest {
             connection.chain()
         )
         assertEquals(listOf("Stand In"), connection.links[1].fromJobs)
+    }
+
+    private val metLeVar = PersonalLinks(
+        LinkedPerson(4, "Matthew Thies"),
+        listOf(PersonalLink(10, "LeVar Burton", "met at parties"))
+    )
+    private val firstContact = Film(
+        90, "Star Trek: First Contact", 1996,
+        listOf(Role(10, "LeVar Burton", "Geordi La Forge"), Role(11, "Jerry Goldsmith", job = "Original Music Composer"))
+    )
+
+    @Test
+    fun `someone Matthew Thies has met is one degree from him, with no TMDB lookups`() = runTest {
+        val connection = finder(emptyList(), personalLinks = metLeVar).find(10, "LeVar Burton", 4, "Matthew Thies")!!
+
+        assertEquals(listOf("LeVar Burton > met at parties > Matthew Thies"), connection.chain())
+        assertNull(connection.links.single().movie)
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun `a chain can end in someone Matthew Thies has met`() = runTest {
+        val connection = finder(listOf(firstContact), personalLinks = metLeVar).find(11, "Jerry Goldsmith", 4, "Matthew Thies")!!
+
+        assertEquals(
+            listOf("Jerry Goldsmith > Star Trek: First Contact (1996) > LeVar Burton", "LeVar Burton > met at parties > Matthew Thies"),
+            connection.chain()
+        )
+    }
+
+    @Test
+    fun `personal links only count when Matthew Thies is one of the two people`() = runTest {
+        // Jerry Goldsmith to Eileen Dietz would only connect through Matthew's party.
+        assertNull(finder(listOf(firstContact, butterfly), personalLinks = metLeVar).find(11, "Jerry Goldsmith", 5, "Eileen Dietz"))
     }
 
     @Test
