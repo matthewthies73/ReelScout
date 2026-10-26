@@ -48,7 +48,7 @@ data class Title(
     val posterPath: String?
 )
 
-/** An actor (or other person) from TMDB's people search, with a few titles to tell namesakes apart. */
+/** A person from TMDB's people search, cast or crew, with a few titles to tell namesakes apart. */
 @Serializable
 data class Person(
     val tmdbId: Int,
@@ -57,7 +57,10 @@ data class Person(
     val knownFor: List<String>
 )
 
-/** One title in a person's acting credits. No synopsis: a filmography is long, and Claude only needs to pick from it. */
+/**
+ * One title in a person's credits: the character they played, their crew jobs (Director,
+ * Editor, ...), or both. No synopsis: a filmography is long, and Claude only needs to pick from it.
+ */
 @Serializable
 data class Credit(
     val tmdbId: Int,
@@ -65,14 +68,17 @@ data class Credit(
     val mediaType: MediaType,
     val releaseYear: Int?,
     val character: String?,
-    val posterPath: String?
+    val posterPath: String?,
+    // Left out of the JSON when empty, as it is for most actors' credits.
+    val jobs: List<String> = emptyList()
 ) {
     fun toTitle(): Title = Title(tmdbId, name, mediaType, overview = "", releaseYear, posterPath)
 }
 
 /**
- * How two people are linked through films they appeared in, Six Degrees of Kevin Bacon
- * style: each link is one film that [ConnectionLink.from] and [ConnectionLink.to] were both in.
+ * How two people are linked through films they worked on, Six Degrees of Kevin Bacon style:
+ * each link is one film that [ConnectionLink.from] and [ConnectionLink.to] were both in, in the
+ * cast or the crew.
  */
 @Serializable
 data class Connection(val degrees: Int, val links: List<ConnectionLink>)
@@ -83,7 +89,10 @@ data class ConnectionLink(
     val fromCharacter: String?,
     val movie: Title,
     val to: String,
-    val toCharacter: String?
+    val toCharacter: String?,
+    // Crew jobs on the film, for a link made behind the camera. Left out of the JSON when empty.
+    val fromJobs: List<String> = emptyList(),
+    val toJobs: List<String> = emptyList()
 )
 
 /** One place to watch a title. `adSupported` is null when the source doesn't say. */

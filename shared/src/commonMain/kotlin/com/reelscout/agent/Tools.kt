@@ -70,8 +70,9 @@ object Tools {
 
     val searchPeople = ToolDefinition(
         name = "search_people",
-        description = "Search for actors by name. Returns candidate people with their TMDB person id " +
-            "and a few titles they're known for, to tell people with the same name apart.",
+        description = "Search for people by name: actors, or crew such as directors, writers, composers, " +
+            "editors and producers. Returns candidate people with their TMDB person id, the department " +
+            "they're known for, and a few titles they're known for, to tell people with the same name apart.",
         inputSchema = buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {
@@ -86,9 +87,10 @@ object Tools {
 
     val getPersonCredits = ToolDefinition(
         name = "get_person_credits",
-        description = "List the movies and TV shows a person (by TMDB person id) has acted in, most " +
-            "popular first, with the character they played. Each entry has the TMDB id and mediaType " +
-            "that the availability tools take.",
+        description = "List the movies and TV shows a person (by TMDB person id) worked on, in the cast " +
+            "or the crew, most popular first, with the character they played and/or their crew jobs " +
+            "(e.g. Director, Editor). Each entry has the TMDB id and mediaType that the availability " +
+            "tools take.",
         inputSchema = buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {
@@ -101,10 +103,10 @@ object Tools {
     val findConnection = ToolDefinition(
         name = "find_connection",
         description = "Six Degrees of Kevin Bacon: find a chain of films linking two people (by TMDB " +
-            "person id), where each link is a film both people acted in. Returns the number of " +
-            "degrees and each link with the characters played, or connected: false if no chain " +
-            "turned up. Searches the most popular films and co-stars, so the chain is short but " +
-            "not guaranteed to be the shortest.",
+            "person id), where each link is a film both people worked on, in the cast or the crew. " +
+            "Returns the number of degrees and each link with the characters played and/or crew " +
+            "jobs, or connected: false if no chain turned up. Searches the most popular films and " +
+            "people, so the chain is short but not guaranteed to be the shortest.",
         inputSchema = buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {

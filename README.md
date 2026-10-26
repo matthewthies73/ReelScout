@@ -24,7 +24,7 @@ desktop and the web, from one Kotlin codebase.**
 </p>
 
 Ask about a title, *"Night of the Living Dead"* or *"sci-fi like Interstellar I can watch free"*,
-or an actor, *"what Tom Hanks movies can I stream free?"*, and ReelScout's agent looks it up in live catalog data, checks where it's streaming in your
+or a person in front of or behind the camera, *"what Tom Hanks movies can I stream free?"*, and ReelScout's agent looks it up in live catalog data, checks where it's streaming in your
 country, falls back to public-domain archives for older films, and answers with direct
 links. It never answers from the model's memory of "what's on Netflix", which goes stale
 the day it's written.
@@ -32,7 +32,7 @@ the day it's written.
 ## Highlights
 
 - **A real agent, not a prompt wrapper.** Claude runs a multi-step tool-use loop: resolve
-  the title (or an actor's filmography), cross-check two availability sources, fall back to Archive.org, then
+  the title (or a person's filmography), cross-check two availability sources, fall back to Archive.org, then
   answer, citing which source confirmed each option.
 - **One codebase, four platforms.** Compose Multiplatform UI and shared Kotlin logic,
   including the agent loop itself, on Android, iOS, desktop (JVM) and web (Kotlin/Wasm).
@@ -40,11 +40,13 @@ the day it's written.
   official APIs. No scraping, no torrents.
 - **Honest about "free".** Ad-supported services, library-card services (Hoopla, Kanopy)
   and paid tiers are reported separately, never mixed together.
-- **Actor lookup.** Ask by actor and the agent pulls their acting credits from TMDB, picks
-  the titles that fit, and checks where each one is free, naming the character they played.
-- **Six Degrees of Kevin Bacon.** Ask how two actors are connected and a search in shared
-  Kotlin walks TMDB's film casts from both ends to find a chain of films linking them,
-  then checks where those films are free.
+- **Cast and crew lookup.** Ask by actor, director, writer, composer, editor or anyone else in
+  the credits, and the agent pulls their credits from TMDB, picks the titles that fit, and
+  checks where each one is free, naming the character they played or their job.
+- **Six Degrees of Kevin Bacon.** Ask how two people are connected and a search in shared
+  Kotlin walks TMDB's film credits, cast and crew, from both ends to find a chain of films
+  linking them, then checks where those films are free. Crew count, so even someone with a
+  single indie credit behind the camera can be linked to Kevin Bacon.
 - **15 countries**, follow-up questions ("what about the 1990 remake?"), saved titles,
   dark mode, and a live search counter with the week's most-asked questions.
 - **Production-shaped.** A locked-down edge relay, CI on every PR (including an iOS build),
@@ -98,7 +100,7 @@ reasoning happens in the app.
 | **Free vs. library card vs. paid, decided in code** | Both data sources list library services as "free". A deterministic rule splits them out, rather than trusting the prompt. |
 | **Analytics recorded by the relay** | Every answered question (question, answer, tools used, country) goes to D1 with no IP or user id. Clients can't inflate the counts. The public "popular" list only shows short, repeated questions. |
 | **Versioned web loader** | Kotlin/Wasm's loader keeps one filename across builds, and the CDN cached it for 4 hours. `index.html` loads it as `reelscout.js?v=<content hash>`, so every deploy reaches visitors immediately. |
-| **Actor connections searched in code, not by Claude** | Finding a link between two actors can take dozens of TMDB lookups. A two-ended search in Kotlin does them within a fixed limit of 40 calls, expanding only the most popular films and co-stars, instead of spending Claude turns and tokens on each step. |
+| **Connections searched in code, not by Claude** | Finding a link between two people can take dozens of TMDB lookups. A two-ended search in Kotlin does them within a fixed limit of 40 calls, expanding only the most popular films and people, instead of spending Claude turns and tokens on each step. It grows whichever end is smaller first, so a little-known crew member gets searched a few films out for a handful of calls. |
 | **Settings store over a database for favorites** | A short list of saved titles doesn't need SQL, and SQLDelight on Wasm would mean async queries and a web-worker SQLite. |
 
 ## Tech stack
@@ -174,7 +176,7 @@ account. Only the total count and the week's most-asked short questions are publ
 | Phase | |
 |---|---|
 | 0–4 · Scaffold, data layer, relay, CI/CD, agent loop | ✅ Done |
-| 5 · Region picker, free-source rules, favorites, actor lookup, actor connections, dark mode | ✅ Done |
+| 5 · Region picker, free-source rules, favorites, cast and crew lookup, connections, dark mode | ✅ Done |
 | 6 · Packaging: Android release (Google Play + GitHub Releases), desktop installers | 🚧 In progress |
 | 7 · Portfolio polish: demo videos per platform | Planned |
 

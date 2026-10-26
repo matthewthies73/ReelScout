@@ -57,7 +57,7 @@ class ToolExecutor(
 
         "get_person_credits" -> {
             val personId = input.jsonObject["personId"]?.jsonPrimitive?.int ?: error("personId is required")
-            // Prolific actors have hundreds of credits; the most popular are what people ask about.
+            // Prolific actors and crew have hundreds of credits; the most popular are what people ask about.
             commonJson.encodeToString(ListSerializer(Credit.serializer()), tmdb.getPersonCredits(personId).take(MAX_CREDITS))
         }
 

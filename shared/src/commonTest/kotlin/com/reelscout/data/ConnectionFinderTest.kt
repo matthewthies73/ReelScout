@@ -17,8 +17,9 @@ import kotlin.test.assertTrue
 /** Runs ConnectionFinder over a small film graph served by a MockEngine standing in for the relay. */
 class ConnectionFinderTest {
 
-    private data class Role(val personId: Int, val personName: String, val character: String)
-    private data class Film(val id: Int, val title: String, val year: Int, val cast: List<Role>, val genreIds: List<Int> = emptyList())
+    /** A part in a film's cast (a [character]) or one crew [job]. */
+    private data class Role(val personId: Int, val personName: String, val character: String? = null, val job: String? = null)
+    private data class Film(val id: Int, val title: String, val year: Int, val credits: List<Role>, val genreIds: List<Int> = emptyList())
 
     private var calls = 0
 
@@ -30,20 +31,24 @@ class ConnectionFinderTest {
             val path = request.url.encodedPath
             val body = Regex("""/api/tmdb/person/(\d+)/combined_credits""").find(path)?.let { match ->
                 val personId = match.groupValues[1].toInt()
-                val credits = films.filter { film -> film.cast.any { it.personId == personId } }.joinToString(",") { film ->
-                    val character = film.cast.first { it.personId == personId }.character
-                    """{"id": ${film.id}, "title": "${film.title}", "media_type": "movie", "character": "$character",
+                val roles = films.flatMap { film -> film.credits.filter { it.personId == personId }.map { film to it } }
+                fun entries(part: (Role) -> String?) = roles.filter { part(it.second) != null }.joinToString(",") { (film, role) ->
+                    """{"id": ${film.id}, "title": "${film.title}", "media_type": "movie", ${role.fields()},
                         "release_date": "${film.year}-01-01", "popularity": ${film.id}, "genre_ids": ${film.genreIds}}"""
                 }
-                """{"cast": [$credits]}"""
+                """{"cast": [${entries { it.character }}], "crew": [${entries { it.job }}]}"""
             } ?: Regex("""/api/tmdb/movie/(\d+)/credits""").find(path)?.let { match ->
                 val film = films.first { it.id == match.groupValues[1].toInt() }
-                """{"cast": [${film.cast.joinToString(",") { """{"id": ${it.personId}, "name": "${it.personName}", "character": "${it.character}"}""" }}]}"""
+                fun entries(part: (Role) -> String?) = film.credits.filter { part(it) != null }
+                    .joinToString(",") { """{"id": ${it.personId}, "name": "${it.personName}", ${it.fields()}}""" }
+                """{"cast": [${entries { it.character }}], "crew": [${entries { it.job }}]}"""
             } ?: error("unexpected request $path")
             respond(body, HttpStatusCode.OK, json)
         }) { installEdgeDefaults() }
         return ConnectionFinder(TmdbRepository(client), maxCalls = maxCalls)
     }
+
+    private fun Role.fields() = if (job != null) """"job": "$job"""" else """"character": "$character""""
 
     private val elvis = Role(1, "Elvis Presley", "Dr. John Carpenter")
     private val asner = Role(2, "Edward Asner", "Lt. Moroney")
@@ -53,6 +58,16 @@ class ConnectionFinderTest {
     private val jfk = Film(20, "JFK", 1991, listOf(asner.copy(character = "Guy Banister"), bacon))
 
     private fun Connection.chain() = links.map { "${it.from} > ${it.movie.name} (${it.movie.releaseYear}) > ${it.to}" }
+
+    // Little known, and crew only: two jobs on one indie film.
+    private val butterfly = Film(
+        50, "Butterfly", 2010,
+        listOf(
+            Role(4, "Matthew Thies", job = "Music"), Role(4, "Matthew Thies", job = "Editor"),
+            Role(5, "Eileen Dietz", "Joy Greenstahl"), Role(8, "Ron Roggé", "Bob Greenstahl")
+        )
+    )
+    private val exorcist = Film(60, "The Exorcist", 1973, listOf(Role(5, "Eileen Dietz", "Demon"), Role(6, "William Friedkin", job = "Director")))
 
     @Test
     fun `two people in the same film are one degree apart`() = runTest {
@@ -74,6 +89,47 @@ class ConnectionFinderTest {
             connection.chain()
         )
         assertEquals("Dr. John Carpenter", connection.links.first().fromCharacter)
+    }
+
+    @Test
+    fun `crew jobs link people as well as roles do`() = runTest {
+        val connection = finder(listOf(butterfly, exorcist)).find(4, "Matthew Thies", 6, "William Friedkin")!!
+
+        assertEquals(2, connection.degrees)
+        assertEquals(
+            listOf("Matthew Thies > Butterfly (2010) > Eileen Dietz", "Eileen Dietz > The Exorcist (1973) > William Friedkin"),
+            connection.chain()
+        )
+        val (first, second) = connection.links
+        assertEquals(listOf("Music", "Editor"), first.fromJobs)
+        assertNull(first.fromCharacter)
+        assertEquals("Joy Greenstahl", first.toCharacter)
+        assertTrue(first.toJobs.isEmpty())
+        assertEquals("Demon", second.fromCharacter)
+        assertEquals(listOf("Director"), second.toJobs)
+    }
+
+    @Test
+    fun `a little-known person is searched further out than a well-known one`() = runTest {
+        // Kevin Bacon has a dozen more popular films than the one that links him to the chain.
+        // Taking turns, the search would spend its calls on those; growing the smaller end
+        // first follows the chain out from Matthew Thies until it reaches him.
+        val basicInstinct = Film(80, "Basic Instinct", 1992, listOf(Role(8, "Ron Roggé", job = "Stand In"), Role(9, "Peter Appel", "Detective")))
+        val sleepers = Film(70, "Sleepers", 1996, listOf(Role(9, "Peter Appel", "Boyfriend"), bacon.copy(character = "Nokes")))
+        val baconHits = (1..12).map { Film(100 + it, "Bacon Hit $it", 2000, listOf(bacon)) }
+
+        val connection = finder(listOf(butterfly, basicInstinct, sleepers) + baconHits, maxCalls = 7)
+            .find(4, "Matthew Thies", 3, "Kevin Bacon")!!
+
+        assertEquals(
+            listOf(
+                "Matthew Thies > Butterfly (2010) > Ron Roggé",
+                "Ron Roggé > Basic Instinct (1992) > Peter Appel",
+                "Peter Appel > Sleepers (1996) > Kevin Bacon"
+            ),
+            connection.chain()
+        )
+        assertEquals(listOf("Stand In"), connection.links[1].fromJobs)
     }
 
     @Test

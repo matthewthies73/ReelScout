@@ -48,30 +48,44 @@ class TmdbRepository(private val client: HttpClient) {
     }
 
     /**
-     * A person's acting credits, most popular first. Talk, news and reality shows are dropped:
-     * they're guest appearances as themselves, and would crowd out the actual roles.
+     * A person's credits, cast and crew, one entry per title with the character they played
+     * and/or their crew jobs, most popular first. Talk, news and reality show appearances are
+     * dropped: they're guest spots as themselves, and would crowd out the actual roles.
      */
-    suspend fun getPersonCredits(personId: Int): List<Credit> = actingCredits(personId).map { it.toDomain() }
+    suspend fun getPersonCredits(personId: Int): List<Credit> =
+        personCredits(personId).groupBy { it.mediaType to it.id }.values.map { entries ->
+            // The role, if any, gives the character; crew entries add their jobs.
+            val role = entries.firstOrNull { it.job == null } ?: entries.first()
+            role.toDomain().copy(jobs = entries.mapNotNull { it.job }.distinct())
+        }
 
-    /** [getPersonCredits] before it's trimmed for Claude: ConnectionFinder needs the popularity. */
-    internal suspend fun actingCredits(personId: Int): List<TmdbCastCredit> {
+    /**
+     * [getPersonCredits] before it's merged and trimmed for Claude: one entry per role or crew
+     * job, with the popularity ConnectionFinder needs.
+     */
+    internal suspend fun personCredits(personId: Int): List<TmdbPersonCredit> {
         val response: TmdbCombinedCredits =
             client.get("${EdgeApiConfig.baseUrl}/api/tmdb/person/$personId/combined_credits").bodyOrThrow()
 
-        return response.cast
-            .filter { it.mediaType == "movie" || it.mediaType == "tv" }
+        val roles = response.cast
             .filter { credit -> credit.genreIds.none { it in NON_ACTING_GENRES } }
             .filterNot { isArchiveFootage(it.character) }
             // An actor can be credited twice on one title (two characters); keep the first.
             .distinctBy { it.mediaType to it.id }
+        // Crew are listed once per job: one person can write, direct and edit a film.
+        val jobs = response.crew.filterNot { it.job in NOT_WORK_ON_TITLE }
+        return (roles + jobs)
+            .filter { it.mediaType == "movie" || it.mediaType == "tv" }
             .sortedByDescending { it.popularity }
     }
 
-    /** A movie's cast, most popular first. */
-    internal suspend fun movieCast(movieId: Int): List<TmdbMovieCastMember> {
+    /** A movie's cast and crew, most popular first: one entry per role or crew job. */
+    internal suspend fun movieCredits(movieId: Int): List<TmdbMovieCredit> {
         val response: TmdbMovieCredits =
             client.get("${EdgeApiConfig.baseUrl}/api/tmdb/movie/$movieId/credits").bodyOrThrow()
-        return response.cast.filterNot { isArchiveFootage(it.character) }.distinctBy { it.id }.sortedByDescending { it.popularity }
+        val roles = response.cast.filterNot { isArchiveFootage(it.character) }.distinctBy { it.id }
+        val jobs = response.crew.filterNot { it.job in NOT_WORK_ON_TITLE }
+        return (roles + jobs).sortedByDescending { it.popularity }
     }
 
     // A rate-limited or failed lookup would otherwise decode as an empty cast list, which
@@ -84,6 +98,9 @@ class TmdbRepository(private val client: HttpClient) {
     private companion object {
         // TMDB TV genre ids: News, Reality, Talk.
         val NON_ACTING_GENRES = setOf(10763, 10764, 10767)
+
+        // Crew "jobs" that credit someone without them having worked on the title.
+        val NOT_WORK_ON_TITLE = setOf("Thanks", "In Memory Of")
 
         // Old clips reused in a later film, e.g. Elvis as "Self (archive footage)" in Forrest
         // Gump. Not a role, so not a credit, and not a Kevin Bacon link.
@@ -110,15 +127,20 @@ data class TmdbPersonResult(
 }
 
 @Serializable
-data class TmdbCombinedCredits(val cast: List<TmdbCastCredit> = emptyList())
+data class TmdbCombinedCredits(
+    val cast: List<TmdbPersonCredit> = emptyList(),
+    val crew: List<TmdbPersonCredit> = emptyList()
+)
 
+/** One title in a person's combined credits: a role, or one crew job. */
 @Serializable
-data class TmdbCastCredit(
+data class TmdbPersonCredit(
     val id: Int,
     val title: String? = null,       // movies
     val name: String? = null,        // tv
     val mediaType: String? = null,
-    val character: String? = null,
+    val character: String? = null,   // cast
+    val job: String? = null,         // crew, e.g. "Director"
     val releaseDate: String? = null,
     val firstAirDate: String? = null,
     val posterPath: String? = null,
@@ -196,12 +218,17 @@ data class TmdbProvider(
 )
 
 @Serializable
-data class TmdbMovieCredits(val cast: List<TmdbMovieCastMember> = emptyList())
+data class TmdbMovieCredits(
+    val cast: List<TmdbMovieCredit> = emptyList(),
+    val crew: List<TmdbMovieCredit> = emptyList()
+)
 
+/** One person in a movie's credits: a role, or one crew job. */
 @Serializable
-data class TmdbMovieCastMember(
+data class TmdbMovieCredit(
     val id: Int,
     val name: String,
-    val character: String? = null,
+    val character: String? = null,   // cast
+    val job: String? = null,         // crew
     val popularity: Double = 0.0
 )

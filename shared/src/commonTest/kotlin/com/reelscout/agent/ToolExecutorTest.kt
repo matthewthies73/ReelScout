@@ -216,6 +216,36 @@ class ToolExecutorTest {
             ),
             credits
         )
+        // No crew jobs here, so no empty jobs lists spent on tokens either.
+        assertFalse("jobs" in result)
+    }
+
+    @Test
+    fun `get_person_credits adds crew jobs, merged with any role on the same title`() = runTest {
+        val credits = """
+            {"cast": [
+              {"id": 33, "title": "Unforgiven", "media_type": "movie", "character": "William Munny", "release_date": "1992-08-07", "popularity": 40.0}
+            ],
+            "crew": [
+              {"id": 33, "title": "Unforgiven", "media_type": "movie", "job": "Director", "release_date": "1992-08-07", "popularity": 40.0},
+              {"id": 33, "title": "Unforgiven", "media_type": "movie", "job": "Producer", "release_date": "1992-08-07", "popularity": 40.0},
+              {"id": 127209, "title": "Butterfly", "media_type": "movie", "job": "Music", "release_date": "2010-10-31", "popularity": 0.7},
+              {"id": 127209, "title": "Butterfly", "media_type": "movie", "job": "Editor", "release_date": "2010-10-31", "popularity": 0.7},
+              {"id": 5, "title": "A Friend's Film", "media_type": "movie", "job": "Thanks", "popularity": 30.0},
+              {"id": 6, "title": "A Late Friend's Film", "media_type": "movie", "job": "In Memory Of", "popularity": 20.0}
+            ]}
+        """.trimIndent()
+        val tools = executor("/api/tmdb/person/142/combined_credits" to (HttpStatusCode.OK to credits))
+
+        val result = tools.execute("get_person_credits", input("""{"personId": 142}"""))
+
+        assertEquals(
+            listOf(
+                Credit(33, "Unforgiven", MediaType.MOVIE, 1992, "William Munny", null, jobs = listOf("Director", "Producer")),
+                Credit(127209, "Butterfly", MediaType.MOVIE, 2010, null, null, jobs = listOf("Music", "Editor"))
+            ),
+            commonJson.decodeFromString(ListSerializer(Credit.serializer()), result)
+        )
     }
 
     @Test
