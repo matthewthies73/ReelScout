@@ -23,6 +23,7 @@ export interface PersonalLinks {
 export const PERSONAL_LINKS: PersonalLinks = {
   person: { tmdb_id: 1740657, name: "Matthew Thies" },
   links: [
-    { tmdb_id: 2390, name: "LeVar Burton", how: "met at parties" },
+    { tmdb_id: 2390, name: "LeVar Burton", how: "met through my ex-wife Elissa Prager during cast parties and screenings for 'Reach For Me'" },
+    { tmdb_id: 11782, name: "Adrienne Barbeau", how: "met at screening for 'Reach For Me'"}
   ],
 };
